@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
 <title>人生キャッシュフロー - ライフマネープラン</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
@@ -296,10 +297,72 @@
     white-space: nowrap;
     font-weight: 600;
   }
+
+  /* 簡易パスワードゲート */
+  .auth-gate {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+  }
+  .auth-box {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 32px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    text-align: center;
+    width: 90%;
+    max-width: 320px;
+  }
+  .auth-box h2 {
+    font-size: 16px;
+    margin: 0 0 16px;
+    color: var(--text);
+  }
+  .auth-box input {
+    display: block;
+    width: 100%;
+    font-size: 15px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: inherit;
+    margin-bottom: 12px;
+    box-sizing: border-box;
+  }
+  .auth-box button {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 24px;
+    font-size: 14px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .auth-box button:hover { opacity: 0.9; }
+  .auth-error {
+    color: #d9534f;
+    font-size: 13px;
+    margin: 10px 0 0;
+  }
 </style>
 </head>
 <body>
-<div class="page">
+<div id="authGate" class="auth-gate">
+  <div class="auth-box">
+    <h2>合言葉を入力してください</h2>
+    <input type="password" id="authPassword" placeholder="パスワード" autocomplete="off">
+    <button type="button" id="authSubmit">開く</button>
+    <p id="authError" class="auth-error" style="display:none;">合言葉が違います</p>
+  </div>
+</div>
+<div class="page" style="display:none">
   <h1>人生キャッシュフロー</h1>
   <p class="subtitle">年ごとの年齢・収入・支出・投資から、総資産の推移をシミュレーションします（単位：万円）</p>
   <nav><a href="index.html">投資シミュレーション</a><a href="timeline.html">人生キャッシュフロー</a><a href="kakeibo.html">家計簿</a></nav>
@@ -1728,6 +1791,46 @@ window.addEventListener('storage', e => {
   generateTable();
   generateMonthlyTable();
 });
+</script>
+
+<script>
+// 簡易パスワードゲート(正規の合言葉をハッシュ化して比較。一致した端末ではlocalStorageに記録し再入力を省略)
+(function() {
+  const AUTH_KEY = 'lifeMoneyAuthV1';
+  const AUTH_HASH = '092a674450f5c571cb12b93efb0647da3c8b1b84e93a76cef3130464b4635f7a';
+  const gate = document.getElementById('authGate');
+  const wrapper = document.querySelector('.page');
+  const input = document.getElementById('authPassword');
+  const error = document.getElementById('authError');
+
+  function unlock() {
+    gate.style.display = 'none';
+    wrapper.style.display = '';
+  }
+
+  async function tryUnlock() {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input.value));
+    const hex = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+    if (hex === AUTH_HASH) {
+      localStorage.setItem(AUTH_KEY, 'ok');
+      error.style.display = 'none';
+      unlock();
+    } else {
+      error.style.display = 'block';
+      input.value = '';
+      input.focus();
+    }
+  }
+
+  if (localStorage.getItem(AUTH_KEY) === 'ok') {
+    unlock();
+  } else {
+    input.focus();
+  }
+
+  document.getElementById('authSubmit').addEventListener('click', tryUnlock);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') tryUnlock(); });
+})();
 </script>
 </body>
 </html>
