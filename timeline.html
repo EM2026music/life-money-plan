@@ -8,17 +8,18 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
   :root {
-    --bg: #f4f6f8;
+    --bg: #eef7fb;
     --card-bg: #ffffff;
-    --border: #e2e6ea;
-    --text: #2c3340;
-    --text-light: #8a93a3;
-    --accent: #4a90d9;
-    --section-bg: #eef2f7;
+    --border: #d4e8f0;
+    --text: #2c3a42;
+    --text-light: #7c8d97;
+    --accent: #38b6d3;
+    --accent-line: #7ed3e8;
+    --section-bg: #e2f3fa;
     --neg: #d9534f;
-    --color-cash: #4a90d9;
+    --color-cash: #38b6d3;
     --color-invest: #4caf7d;
-    --color-total: #333;
+    --color-total: #2c6b7a;
   }
   * { box-sizing: border-box; }
   body {
@@ -29,7 +30,14 @@
     padding: 24px;
   }
   .page { max-width: 1200px; margin: 0 auto; }
-  h1 { font-size: 24px; margin: 0 0 4px; }
+  h1 {
+    font-size: 24px;
+    margin: 0 0 4px;
+    color: var(--accent);
+    border-bottom: 3px solid var(--accent-line);
+    padding-bottom: 8px;
+    display: inline-block;
+  }
   .subtitle { color: var(--text-light); font-size: 14px; margin: 0 0 12px; }
   nav { font-size: 13px; margin-bottom: 16px; }
   nav a { color: var(--accent); text-decoration: none; margin-right: 12px; }
@@ -37,12 +45,18 @@
   .card {
     background: var(--card-bg);
     border: 1px solid var(--border);
+    border-top: 3px solid var(--accent);
     border-radius: 12px;
     padding: 18px 20px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    box-shadow: 0 1px 3px rgba(56,182,211,0.08);
     margin-bottom: 16px;
   }
-  .card h2 { font-size: 15px; margin: 0 0 14px; }
+  .card h2 {
+    font-size: 15px;
+    margin: 0 0 14px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--accent-line);
+  }
   .card h2.collapsible-header {
     cursor: pointer;
     display: flex;
@@ -89,7 +103,8 @@
     padding: 0;
   }
   .table-wrap > h2 {
-    padding: 18px 20px 0;
+    margin: 0 20px 12px;
+    padding: 18px 0 8px;
   }
   .table-wrap > .settings-grid {
     padding: 0 20px 12px;
@@ -111,6 +126,7 @@
     background: #fff;
     z-index: 3;
     font-weight: 600;
+    border-bottom: 2px solid var(--accent-line);
   }
   .row-label {
     position: sticky;
@@ -134,6 +150,40 @@
     vertical-align: middle;
   }
   .row-group-toggle:hover { color: var(--accent); }
+  /* グリッド上で項目名を直接編集 */
+  .label-edit-input {
+    border: 1px solid transparent;
+    background: transparent;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+    width: 90px;
+    padding: 2px 4px;
+    border-radius: 4px;
+    vertical-align: middle;
+  }
+  .label-edit-input:hover { border-color: var(--border); }
+  .label-edit-input:focus {
+    outline: none;
+    border-color: var(--accent);
+    background: #fff;
+  }
+  .label-edit-input.indented { margin-left: 10px; width: 80px; }
+  .label-del-btn {
+    border: none;
+    background: none;
+    color: var(--text-light);
+    cursor: pointer;
+    font-size: 11px;
+    padding: 0 2px;
+    margin-left: 2px;
+    opacity: 0;
+    transition: opacity .15s;
+    vertical-align: middle;
+  }
+  .row-label:hover .label-del-btn { opacity: 1; }
+  .label-del-btn:hover { color: var(--neg); }
   tr.section-row td {
     background: var(--section-bg);
     font-weight: 700;
@@ -402,15 +452,6 @@
   </div>
 
   <div class="card table-wrap">
-    <table class="timeline">
-      <thead>
-        <tr id="yearHeaderRow"><th class="row-label">項目</th></tr>
-      </thead>
-      <tbody id="timelineBody"></tbody>
-    </table>
-  </div>
-
-  <div class="card table-wrap">
     <h2>月次プランナー</h2>
     <div class="settings-grid">
       <label>対象年
@@ -422,6 +463,16 @@
         <tr id="monthHeaderRow"><th class="row-label">項目</th></tr>
       </thead>
       <tbody id="monthlyBody"></tbody>
+    </table>
+  </div>
+
+  <div class="card table-wrap">
+    <h2>年次タイムライン</h2>
+    <table class="timeline">
+      <thead>
+        <tr id="yearHeaderRow"><th class="row-label">項目</th></tr>
+      </thead>
+      <tbody id="timelineBody"></tbody>
     </table>
   </div>
 
@@ -1343,6 +1394,108 @@ function toggleExpenseGroup(groupId) {
   });
 }
 
+// グリッド上で支出の分類(項目)・大項目を直接 改名・削除するためのヘルパー。
+// 改名はフィールドを離れたとき(change)に確定し、共有ストア経由で家計簿にも反映される。
+function renameCategoryInline(catId, name) {
+  const cat = categoryStore.categories.find(c => c.id === catId);
+  if (!cat) return;
+  const trimmed = (name || '').trim();
+  if (!trimmed || trimmed === cat.name) { generateTable(); generateMonthlyTable(); return; }
+  cat.name = trimmed;
+  saveCategoryStore(categoryStore);
+  ROWS = buildRows();
+  generateTable();
+  generateMonthlyTable();
+  renderCategorySettings();
+}
+
+function deleteCategoryInline(catId) {
+  const cat = categoryStore.categories.find(c => c.id === catId);
+  if (!cat) return;
+  if (!confirm(`「${cat.name}」を削除します。よろしいですか?\n(この項目に入力した金額も削除されます)`)) return;
+  categoryStore.categories = categoryStore.categories.filter(c => c.id !== catId);
+  const rowId = `cat_${catId}`;
+  delete data.cells[rowId];
+  delete data.monthlyCells[rowId];
+  saveCategoryStore(categoryStore);
+  saveData();
+  ROWS = buildRows();
+  generateTable();
+  generateMonthlyTable();
+  renderCategorySettings();
+}
+
+function renameGroupInline(groupId, name) {
+  const g = categoryStore.groups.find(g => g.id === groupId);
+  if (!g) return;
+  const trimmed = (name || '').trim();
+  if (!trimmed || trimmed === g.name) { generateTable(); generateMonthlyTable(); return; }
+  g.name = trimmed;
+  saveCategoryStore(categoryStore);
+  ROWS = buildRows();
+  generateTable();
+  generateMonthlyTable();
+  renderCategorySettings();
+}
+
+function deleteGroupInline(groupId) {
+  const g = categoryStore.groups.find(g => g.id === groupId);
+  if (!g) return;
+  if (!confirm(`大項目「${g.name}」を削除します。配下の分類は「未分類」に移動します。よろしいですか?`)) return;
+  categoryStore.groups = categoryStore.groups.filter(x => x.id !== groupId);
+  categoryStore.categories.forEach(c => { if (c.groupId === groupId) c.groupId = null; });
+  saveCategoryStore(categoryStore);
+  ROWS = buildRows();
+  generateTable();
+  generateMonthlyTable();
+  renderCategorySettings();
+}
+
+// 支出の分類行・大項目行のラベルセル(編集入力+削除ボタン)を組み立てる。
+function buildEditableCategoryLabel(labelTd, row) {
+  if (row.id.startsWith('catgrp_')) {
+    const collapsed = collapsedExpenseGroups.has(row.groupId);
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'row-group-toggle';
+    toggle.dataset.groupId = row.groupId;
+    toggle.textContent = collapsed ? '▶' : '▼';
+    labelTd.appendChild(toggle);
+
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.className = 'label-edit-input group-edit';
+    nameInput.value = row.label;
+    nameInput.addEventListener('change', e => renameGroupInline(row.groupId, e.target.value));
+    labelTd.appendChild(nameInput);
+
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'label-del-btn';
+    del.title = 'この大項目を削除';
+    del.textContent = '✕';
+    del.addEventListener('click', () => deleteGroupInline(row.groupId));
+    labelTd.appendChild(del);
+    return;
+  }
+
+  const cat = categoryStore.categories.find(c => c.id === row.catId);
+  const nameInput = document.createElement('input');
+  nameInput.type = 'text';
+  nameInput.className = 'label-edit-input' + (row.groupId ? ' indented' : '');
+  nameInput.value = cat ? cat.name : row.label.trim();
+  nameInput.addEventListener('change', e => renameCategoryInline(row.catId, e.target.value));
+  labelTd.appendChild(nameInput);
+
+  const del = document.createElement('button');
+  del.type = 'button';
+  del.className = 'label-del-btn';
+  del.title = 'この項目を削除';
+  del.textContent = '✕';
+  del.addEventListener('click', () => deleteCategoryInline(row.catId));
+  labelTd.appendChild(del);
+}
+
 function generateTable() {
   const years = getYears();
   ensureCollapsedExpenseGroups();
@@ -1372,9 +1525,8 @@ function generateTable() {
 
     const labelTd = document.createElement('td');
     labelTd.className = 'row-label';
-    if (row.id.startsWith('catgrp_')) {
-      const collapsed = collapsedExpenseGroups.has(row.groupId);
-      labelTd.innerHTML = `<button type="button" class="row-group-toggle" data-group-id="${row.groupId}">${collapsed ? '▶' : '▼'}</button>${row.label}`;
+    if (row.id.startsWith('catgrp_') || row.catId !== undefined) {
+      buildEditableCategoryLabel(labelTd, row);
     } else {
       labelTd.textContent = row.label;
     }

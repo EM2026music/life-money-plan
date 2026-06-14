@@ -8,15 +8,16 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
   :root {
-    --color-cash: #4a90d9;
+    --color-cash: #38b6d3;
     --color-invest: #4caf7d;
-    --color-total: #333;
-    --bg: #f4f6f8;
+    --color-total: #2c6b7a;
+    --bg: #eef7fb;
     --card-bg: #ffffff;
-    --border: #e2e6ea;
-    --text: #2c3340;
-    --text-light: #8a93a3;
-    --accent: #4a90d9;
+    --border: #d4e8f0;
+    --text: #2c3a42;
+    --text-light: #7c8d97;
+    --accent: #38b6d3;
+    --accent-line: #7ed3e8;
   }
   * { box-sizing: border-box; }
   body {
@@ -33,6 +34,10 @@
   h1 {
     font-size: 24px;
     margin: 0 0 4px;
+    color: var(--accent);
+    border-bottom: 3px solid var(--accent-line);
+    padding-bottom: 8px;
+    display: inline-block;
   }
   .subtitle {
     color: var(--text-light);
@@ -48,14 +53,17 @@
   .card {
     background: var(--card-bg);
     border: 1px solid var(--border);
+    border-top: 3px solid var(--accent);
     border-radius: 12px;
     padding: 18px 20px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    box-shadow: 0 1px 3px rgba(56,182,211,0.08);
   }
   .card h2 {
     font-size: 15px;
     margin: 0 0 14px;
     color: var(--text);
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--accent-line);
   }
   label {
     display: block;
@@ -208,9 +216,9 @@
   <h1>ライフマネープラン</h1>
   <p class="subtitle">現在の資産とキャッシュフローから、将来の資産推移をシミュレーションします（単位：万円）</p>
   <nav style="font-size:13px; margin-bottom:16px;">
-    <a href="index.html" style="color:#4a90d9; text-decoration:none; margin-right:12px;">投資シミュレーション</a>
-    <a href="timeline.html" style="color:#4a90d9; text-decoration:none; margin-right:12px;">人生キャッシュフロー</a>
-    <a href="kakeibo.html" style="color:#4a90d9; text-decoration:none;">家計簿</a>
+    <a href="index.html" style="color:#38b6d3; text-decoration:none; margin-right:12px;">投資シミュレーション</a>
+    <a href="timeline.html" style="color:#38b6d3; text-decoration:none; margin-right:12px;">人生キャッシュフロー</a>
+    <a href="kakeibo.html" style="color:#38b6d3; text-decoration:none;">家計簿</a>
   </nav>
 
   <div class="grid">
@@ -340,8 +348,8 @@ function renderChart(labels, cashData, investData, totalData) {
     {
       label: '現金・預金',
       data: cashData,
-      borderColor: '#4a90d9',
-      backgroundColor: 'rgba(74,144,217,0.1)',
+      borderColor: '#38b6d3',
+      backgroundColor: 'rgba(56,182,211,0.1)',
       tension: 0.2,
       fill: true,
     },
@@ -356,7 +364,7 @@ function renderChart(labels, cashData, investData, totalData) {
     {
       label: '総資産',
       data: totalData,
-      borderColor: '#333',
+      borderColor: '#2c6b7a',
       borderDash: [5,4],
       backgroundColor: 'transparent',
       tension: 0.2,
