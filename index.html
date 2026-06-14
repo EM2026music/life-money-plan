@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ライフマネープラン - 資産シミュレーション</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  :root {
+    --color-cash: #4a90d9;
+    --color-invest: #4caf7d;
+    --color-total: #333;
+    --bg: #f4f6f8;
+    --card-bg: #ffffff;
+    --border: #e2e6ea;
+    --text: #2c3340;
+    --text-light: #8a93a3;
+    --accent: #4a90d9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Hiragino Sans", "Yu Gothic", "Segoe UI", system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 24px;
+  }
+  .container {
+    max-width: 1000px;
+    margin: 0 auto;
+  }
+  h1 {
+    font-size: 24px;
+    margin: 0 0 4px;
+  }
+  .subtitle {
+    color: var(--text-light);
+    font-size: 14px;
+    margin: 0 0 20px;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .card h2 {
+    font-size: 15px;
+    margin: 0 0 14px;
+    color: var(--text);
+  }
+  label {
+    display: block;
+    font-size: 13px;
+    color: var(--text-light);
+    margin-bottom: 12px;
+  }
+  label input[type="number"],
+  label input[type="range"] {
+    display: block;
+    width: 100%;
+    margin-top: 4px;
+    font-size: 15px;
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: inherit;
+  }
+  label input[type="range"] {
+    padding: 0;
+  }
+  .range-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .range-row input[type="range"] {
+    flex: 1;
+  }
+  .range-val {
+    font-size: 14px;
+    font-weight: 600;
+    min-width: 40px;
+    text-align: right;
+  }
+  .result-line {
+    font-size: 14px;
+    background: #f0f4f9;
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 14px;
+  }
+  .result-line span {
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--accent);
+  }
+  .chart-card canvas {
+    max-height: 360px;
+  }
+  .summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 18px;
+  }
+  .summary-item {
+    flex: 1;
+    min-width: 140px;
+    background: #f7f9fb;
+    border-radius: 10px;
+    padding: 12px 14px;
+    text-align: center;
+  }
+  .summary-item .label {
+    font-size: 12px;
+    color: var(--text-light);
+    margin-bottom: 4px;
+  }
+  .summary-item .value {
+    font-size: 20px;
+    font-weight: 700;
+  }
+  .summary-item.cash .value { color: var(--color-cash); }
+  .summary-item.invest .value { color: var(--color-invest); }
+  .summary-item.total .value { color: var(--color-total); }
+  .note {
+    font-size: 12px;
+    color: var(--text-light);
+    margin-top: 20px;
+    line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>ライフマネープラン</h1>
+  <p class="subtitle">現在の資産とキャッシュフローから、将来の資産推移をシミュレーションします（単位：万円）</p>
+  <nav style="font-size:13px; margin-bottom:16px;">
+    <a href="index.html" style="color:#4a90d9; text-decoration:none; margin-right:12px;">投資シミュレーション</a>
+    <a href="timeline.html" style="color:#4a90d9; text-decoration:none; margin-right:12px;">人生キャッシュフロー</a>
+    <a href="kakeibo.html" style="color:#4a90d9; text-decoration:none;">家計簿</a>
+  </nav>
+
+  <div class="grid">
+    <div class="card">
+      <h2>現在の資産</h2>
+      <label>現金・預金
+        <input type="number" id="cash" value="300">
+      </label>
+      <label>投資資産（株・投信など）
+        <input type="number" id="invest" value="200">
+      </label>
+      <label>その他資産（不動産など・変動なし）
+        <input type="number" id="other" value="0">
+      </label>
+    </div>
+
+    <div class="card">
+      <h2>月々のキャッシュフロー</h2>
+      <label>月収入（世帯合計）
+        <input type="number" id="income" value="50">
+      </label>
+      <label>月支出（世帯合計）
+        <input type="number" id="expense" value="38">
+      </label>
+      <label>ボーナス（年間・世帯合計）
+        <input type="number" id="bonus" value="0">
+      </label>
+      <div class="result-line">
+        月々の余剰：<span id="surplus">12.0</span> 万円
+      </div>
+      <label>余剰のうち投資にまわす割合
+        <div class="range-row">
+          <input type="range" id="investRatio" min="0" max="100" value="50">
+          <span class="range-val"><span id="investRatioVal">50</span>%</span>
+        </div>
+      </label>
+    </div>
+
+    <div class="card">
+      <h2>投資シミュレーション条件</h2>
+      <label>想定年利（％）
+        <input type="number" id="rate" value="5" step="0.5">
+      </label>
+      <label>シミュレーション期間（年）
+        <input type="number" id="years" value="30" step="1">
+      </label>
+    </div>
+  </div>
+
+  <div class="card chart-card">
+    <h2>資産推移シミュレーション</h2>
+    <canvas id="chart"></canvas>
+    <div class="summary" id="summary"></div>
+  </div>
+
+  <p class="note">
+    ※ 投資資産は毎年「(前年の資産 × (1+年利)) + 年間投資額」で複利計算しています。現金・預金は利息を考慮せず、毎年の余剰分のみ加算しています。その他資産は金額が変動しないものとして扱っています。<br>
+    ※ 今後、年金見込み額や子供のライフイベント（進学費用など）を加味した拡張も予定しています。
+  </p>
+</div>
+
+<script>
+const ids = ['cash','invest','other','income','expense','bonus','investRatio','rate','years'];
+const STORAGE_KEY = 'lifeMoneyPlanInputs';
+
+function loadInputs() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    ids.forEach(id => {
+      if (saved[id] !== undefined) document.getElementById(id).value = saved[id];
+    });
+  } catch (e) {}
+}
+
+function saveInputs() {
+  const data = {};
+  ids.forEach(id => { data[id] = document.getElementById(id).value; });
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+let chart;
+
+function calculate() {
+  const cash0 = parseFloat(document.getElementById('cash').value) || 0;
+  const invest0 = parseFloat(document.getElementById('invest').value) || 0;
+  const other = parseFloat(document.getElementById('other').value) || 0;
+  const income = parseFloat(document.getElementById('income').value) || 0;
+  const expense = parseFloat(document.getElementById('expense').value) || 0;
+  const bonus = parseFloat(document.getElementById('bonus').value) || 0;
+  const investRatio = parseFloat(document.getElementById('investRatio').value) / 100;
+  const rate = (parseFloat(document.getElementById('rate').value) || 0) / 100;
+  const years = parseInt(document.getElementById('years').value) || 0;
+
+  const surplus = income - expense;
+  document.getElementById('surplus').textContent = surplus.toFixed(1);
+  document.getElementById('investRatioVal').textContent = Math.round(investRatio * 100);
+
+  const annualSurplus = surplus * 12 + bonus;
+  const annualInvest = annualSurplus * investRatio;
+  const annualCash = annualSurplus * (1 - investRatio);
+
+  let cash = cash0;
+  let invest = invest0;
+  const labels = [];
+  const cashData = [];
+  const investData = [];
+  const totalData = [];
+
+  for (let y = 0; y <= years; y++) {
+    labels.push(y === 0 ? '現在' : y + '年後');
+    cashData.push(Math.round(cash));
+    investData.push(Math.round(invest));
+    totalData.push(Math.round(cash + invest + other));
+
+    invest = invest * (1 + rate) + annualInvest;
+    cash = cash + annualCash;
+  }
+
+  renderChart(labels, cashData, investData, totalData);
+  renderSummary(cashData, investData, totalData, years);
+  saveInputs();
+}
+
+function renderChart(labels, cashData, investData, totalData) {
+  const ctx = document.getElementById('chart').getContext('2d');
+  const datasets = [
+    {
+      label: '現金・預金',
+      data: cashData,
+      borderColor: '#4a90d9',
+      backgroundColor: 'rgba(74,144,217,0.1)',
+      tension: 0.2,
+      fill: true,
+    },
+    {
+      label: '投資資産',
+      data: investData,
+      borderColor: '#4caf7d',
+      backgroundColor: 'rgba(76,175,125,0.1)',
+      tension: 0.2,
+      fill: true,
+    },
+    {
+      label: '総資産',
+      data: totalData,
+      borderColor: '#333',
+      borderDash: [5,4],
+      backgroundColor: 'transparent',
+      tension: 0.2,
+      fill: false,
+    },
+  ];
+
+  if (chart) {
+    chart.data.labels = labels;
+    chart.data.datasets = datasets;
+    chart.update();
+  } else {
+    chart = new Chart(ctx, {
+      type: 'line',
+      data: { labels, datasets },
+      options: {
+        responsive: true,
+        interaction: { mode: 'index', intersect: false },
+        scales: {
+          y: {
+            stacked: false,
+            ticks: {
+              callback: v => v.toLocaleString() + '万円'
+            }
+          }
+        },
+        plugins: {
+          tooltip: {
+            callbacks: {
+              label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString()}万円`
+            }
+          }
+        }
+      }
+    });
+  }
+}
+
+function renderSummary(cashData, investData, totalData, years) {
+  const last = cashData.length - 1;
+  const fmt = v => v.toLocaleString() + ' 万円';
+  document.getElementById('summary').innerHTML = `
+    <div class="summary-item cash">
+      <div class="label">${years}年後の現金・預金</div>
+      <div class="value">${fmt(cashData[last])}</div>
+    </div>
+    <div class="summary-item invest">
+      <div class="label">${years}年後の投資資産</div>
+      <div class="value">${fmt(investData[last])}</div>
+    </div>
+    <div class="summary-item total">
+      <div class="label">${years}年後の総資産</div>
+      <div class="value">${fmt(totalData[last])}</div>
+    </div>
+  `;
+}
+
+ids.forEach(id => {
+  const el = document.getElementById(id);
+  el.addEventListener('input', calculate);
+  if (el.type === 'number') {
+    el.addEventListener('wheel', () => el.blur());
+  }
+});
+
+loadInputs();
+calculate();
+</script>
+</body>
+</html>

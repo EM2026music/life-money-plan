@@ -1,0 +1,1711 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>人生キャッシュフロー - ライフマネープラン</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  :root {
+    --bg: #f4f6f8;
+    --card-bg: #ffffff;
+    --border: #e2e6ea;
+    --text: #2c3340;
+    --text-light: #8a93a3;
+    --accent: #4a90d9;
+    --section-bg: #eef2f7;
+    --neg: #d9534f;
+    --color-cash: #4a90d9;
+    --color-invest: #4caf7d;
+    --color-total: #333;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Hiragino Sans", "Yu Gothic", "Segoe UI", system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 24px;
+  }
+  .page { max-width: 1200px; margin: 0 auto; }
+  h1 { font-size: 24px; margin: 0 0 4px; }
+  .subtitle { color: var(--text-light); font-size: 14px; margin: 0 0 12px; }
+  nav { font-size: 13px; margin-bottom: 16px; }
+  nav a { color: var(--accent); text-decoration: none; margin-right: 12px; }
+  nav a:hover { text-decoration: underline; }
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    margin-bottom: 16px;
+  }
+  .card h2 { font-size: 15px; margin: 0 0 14px; }
+  .settings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+  }
+  .settings-grid label {
+    display: block;
+    font-size: 12px;
+    color: var(--text-light);
+  }
+  .settings-grid input,
+  .settings-grid select {
+    display: block;
+    width: 100%;
+    margin-top: 4px;
+    font-size: 14px;
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-family: inherit;
+  }
+  .table-wrap {
+    overflow-x: auto;
+    padding: 0;
+  }
+  .table-wrap > h2 {
+    padding: 18px 20px 0;
+  }
+  .table-wrap > .settings-grid {
+    padding: 0 20px 12px;
+    max-width: 240px;
+  }
+  table.timeline {
+    border-collapse: collapse;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  table.timeline th, table.timeline td {
+    border: 1px solid var(--border);
+    padding: 4px 6px;
+    text-align: right;
+  }
+  table.timeline th {
+    position: sticky;
+    top: 0;
+    background: #fff;
+    z-index: 3;
+    font-weight: 600;
+  }
+  .row-label {
+    position: sticky;
+    left: 0;
+    background: #fff;
+    text-align: left !important;
+    min-width: 132px;
+    z-index: 2;
+    font-weight: 600;
+  }
+  th.row-label { z-index: 4; }
+  .row-group-toggle {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 10px;
+    padding: 0;
+    margin-right: 4px;
+    color: var(--text-light);
+    font-family: inherit;
+    vertical-align: middle;
+  }
+  .row-group-toggle:hover { color: var(--accent); }
+  tr.section-row td {
+    background: var(--section-bg);
+    font-weight: 700;
+    text-align: left;
+    padding: 6px 8px;
+  }
+  .cell-input {
+    width: 56px;
+    border: none;
+    background: transparent;
+    text-align: right;
+    font-size: 12px;
+    padding: 2px;
+    font-family: inherit;
+    color: var(--text);
+  }
+  .cell-input.inherited {
+    color: var(--text-light);
+  }
+  td.base-cell {
+    background: #f7f9fb;
+    border-right: 2px solid var(--border);
+  }
+  .base-input {
+    font-weight: 600;
+  }
+  .cell-input:focus {
+    outline: 2px solid var(--accent);
+    background: #fff;
+    border-radius: 3px;
+    color: var(--text);
+  }
+  input.event-input { width: 90px; text-align: left; }
+  .age-cell { color: var(--text-light); }
+  tr.computed-row td.computed-cell { font-weight: 700; background: #f7f9fb; }
+  .computed-cell.negative { color: var(--neg); }
+  .copy-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 11px;
+    padding: 0;
+    color: var(--text);
+    font-weight: 600;
+    margin-left: 4px;
+  }
+  .copy-btn:hover { color: var(--accent); }
+  .summary {
+    margin-top: 14px;
+    font-size: 14px;
+    line-height: 1.7;
+  }
+  .summary strong { color: var(--accent); }
+  .summary strong.negative { color: var(--neg); }
+  .note {
+    font-size: 12px;
+    color: var(--text-light);
+    margin-top: 12px;
+    line-height: 1.6;
+  }
+  .chart-card canvas { max-height: 320px; }
+
+  .investment-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .investment-row:last-child { border-bottom: none; }
+  .investment-row .inv-name {
+    flex: 1;
+    min-width: 120px;
+    font-size: 14px;
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-family: inherit;
+  }
+  .investment-row label {
+    font-size: 12px;
+    color: var(--text-light);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+  }
+  .investment-row label input {
+    width: 90px;
+    font-size: 14px;
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-family: inherit;
+  }
+  .del-investment-btn {
+    background: none;
+    border: 1px solid var(--neg);
+    color: var(--neg);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 12px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .del-investment-btn:hover { background: rgba(217,83,79,0.08); }
+  .empty-note {
+    font-size: 12px;
+    color: var(--text-light);
+    margin: 0 0 10px;
+  }
+  .add-btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 14px;
+    font-size: 13px;
+    cursor: pointer;
+    margin-top: 4px;
+  }
+  .add-btn:hover { opacity: 0.9; }
+  .category-group {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+  }
+  .category-group-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 4px;
+  }
+  .category-group-header .group-name-label {
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--text);
+  }
+  .category-group-header .inv-name {
+    font-weight: 700;
+    max-width: 220px;
+  }
+  .group-toggle-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 11px;
+    padding: 2px 4px;
+    line-height: 1;
+    color: var(--text-light);
+    font-family: inherit;
+  }
+  .group-toggle-btn:hover { color: var(--accent); }
+  .category-group.collapsed .investment-row,
+  .category-group.collapsed .cat-add-btn {
+    display: none;
+  }
+  .cat-add-btn {
+    margin-top: 6px;
+    font-size: 12px;
+    padding: 4px 10px;
+  }
+  td.event-name-cell {
+    color: var(--accent);
+    font-size: 12px;
+    white-space: nowrap;
+    font-weight: 600;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>人生キャッシュフロー</h1>
+  <p class="subtitle">年ごとの年齢・収入・支出・投資から、総資産の推移をシミュレーションします（単位：万円）</p>
+  <nav><a href="index.html">投資シミュレーション</a><a href="timeline.html">人生キャッシュフロー</a><a href="kakeibo.html">家計簿</a></nav>
+
+  <div class="card">
+    <h2>基本情報</h2>
+    <div class="settings-grid">
+      <label>開始年
+        <input type="number" id="startYear">
+      </label>
+      <label>シミュレーション年数
+        <input type="number" id="numYears">
+      </label>
+      <label>現在の現金資産（万円）
+        <input type="number" id="initialAssets">
+      </label>
+      <label>パパ 生年
+        <input type="number" id="birthDad">
+      </label>
+      <label>ママ 生年
+        <input type="number" id="birthMom">
+      </label>
+      <label>子1 生年
+        <input type="number" id="birthChild1">
+      </label>
+      <label>子2 生年（いなければ空欄）
+        <input type="number" id="birthChild2">
+      </label>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>分類の設定</h2>
+    <p class="empty-note">家計簿の「分類」とタイムラインの支出行は共通です。大項目ごとに分類をまとめたり、大項目を付けずに管理することもできます。ここでの変更は家計簿側にも反映されます。</p>
+    <div id="categoryGroupList"></div>
+    <button class="add-btn" id="addCategoryGroupBtn">+ 大項目を追加</button>
+  </div>
+
+  <div class="card">
+    <h2>投資資産の設定</h2>
+    <div id="investmentList"></div>
+    <button class="add-btn" id="addInvestmentBtn">+ 投資先を追加</button>
+  </div>
+
+  <div class="card">
+    <h2>ライフイベントの設定</h2>
+    <div id="lifeEventList"></div>
+    <button class="add-btn" id="addLifeEventBtn">+ イベントを追加</button>
+  </div>
+
+  <div class="card">
+    <h2>保険の設定</h2>
+    <div id="insuranceList"></div>
+    <button class="add-btn" id="addInsuranceBtn">+ 保険を追加</button>
+  </div>
+
+  <div class="card table-wrap">
+    <table class="timeline">
+      <thead>
+        <tr id="yearHeaderRow"><th class="row-label">項目</th></tr>
+      </thead>
+      <tbody id="timelineBody"></tbody>
+    </table>
+  </div>
+
+  <div class="card table-wrap">
+    <h2>月次プランナー</h2>
+    <div class="settings-grid">
+      <label>対象年
+        <select id="monthlyYearSelect"></select>
+      </label>
+    </div>
+    <table class="timeline">
+      <thead>
+        <tr id="monthHeaderRow"><th class="row-label">項目</th></tr>
+      </thead>
+      <tbody id="monthlyBody"></tbody>
+    </table>
+  </div>
+
+  <div class="card chart-card">
+    <h2>総資産の推移</h2>
+    <canvas id="assetChart"></canvas>
+    <div class="summary" id="summary"></div>
+  </div>
+
+  <p class="note">
+    ※ 収入・支出は、編集した年から「それ以降ずっとその額」になります（編集した年より後ろは、いったんすべてその額に上書きされます）。薄い文字のセルは引き継がれた値です。途中で金額を変えたいときは、先に手前の年を入れてから、変わる年に新しい額を入力してください（例：2026年に30万 → 全年30万、続けて2031年に35万 → 2026〜2030年は30万・2031年以降は35万）。※手前の年を編集し直すと、その先の変化点も上書きされます。<br>
+    ※ 定年などで収入を止めたい年は、その年に「0」と入力すれば、それ以降ずっと0円として計算されます。<br>
+    ※ 「投資資産の設定」で登録した投資先は年率%で複利計算され、投資額は現金資産から差し引かれた上で総資産（現金資産＋投資資産合計）に統合されます。<br>
+    ※ 「ライフイベントの設定」で車購入・旅行・入学などを「名称・年・金額」で登録すると、その年の「イベント費」に自動加算され、支出合計・資産に反映されます（同じ年に複数登録すると合算され、タイムラインの「イベント」行に名称が並びます）。<br>
+    ※ 「保険の設定」で登録した保険は、タイムラインに「○○ 保険料」の行が追加され、毎年の「保険料」(支出)に統合されます。保険料の金額は年次タイムラインまたは月次プランナーのその行で編集してください。受取年・受取額(学資保険の満期受取など)を指定すると、その年の「保険受取」(収入)に加算されます。<br>
+    ※ 「月次プランナー」の「基準額(月額)」は、年次タイムラインのその年の値を12等分した月額です。基準額を編集すると、その年の1〜12月がその月額に一括リセットされ、年次タイムラインのその年の値も「月額×12」に更新されます（シミュレーション的に使えます）。1〜12月の個別セルを編集すると、その月だけ実績として上書きされ、他の月や基準額には影響しません（年間値は月別合計に自動反映されます）。「リセット」ボタンでその年の月別の上書きをすべて解除できます。
+  </p>
+</div>
+
+<script>
+const STORAGE_KEY = 'lifeMoneyTimelineV1';
+
+const AGE_ROWS = [
+  { section: '年齢' },
+  { id: 'ageDad',    label: 'パパ', type: 'age', birth: 'birthDad' },
+  { id: 'ageMom',    label: 'ママ', type: 'age', birth: 'birthMom' },
+  { id: 'ageChild1', label: '子1', type: 'age', birth: 'birthChild1' },
+  { id: 'ageChild2', label: '子2', type: 'age', birth: 'birthChild2' },
+];
+
+const EVENT_ROWS = [
+  { section: 'ライフイベント' },
+  { id: 'event', label: 'イベント', type: 'eventname' },
+];
+
+const INCOME_ROWS = [
+  { section: '収入（万円/年）' },
+  { id: 'incomeDad',       label: 'パパ収入',   type: 'editable', default: 400, forwardFill: 'full' },
+  { id: 'incomeMom',       label: 'ママ収入',   type: 'editable', default: 100, forwardFill: 'full' },
+  { id: 'incomeOther',     label: 'その他収入', type: 'editable', default: 0,   forwardFill: 'full' },
+  { id: 'incomeInsurance', label: '保険受取',   type: 'computed' },
+  { id: 'incomeTotal',     label: '収入合計',   type: 'computed' },
+];
+
+const EXPENSE_SUMMARY_ROWS = [
+  { id: 'expInsurance', label: '保険料',     type: 'computed' },
+  { id: 'expEvent',     label: 'イベント費', type: 'computed' },
+  { id: 'expTotal',     label: '支出合計',   type: 'computed' },
+];
+
+const ASSET_ROWS = [
+  { section: '資産（万円）' },
+  { id: 'balance',      label: '年間収支',     type: 'computed' },
+  { id: 'investTotal',  label: '投資合計',     type: 'computed' },
+  { id: 'cashAssets',   label: '現金資産',     type: 'computed' },
+  { id: 'investAssets', label: '投資資産合計', type: 'computed' },
+  { id: 'totalAssets',  label: '総資産',       type: 'computed' },
+];
+
+const INCOME_IDS = ['incomeDad','incomeMom','incomeOther'];
+const BIRTH_IDS = ['birthDad','birthMom','birthChild1','birthChild2'];
+
+let data = loadData();
+let chart;
+
+function defaultData() {
+  return {
+    startYear: 2026,
+    numYears: 35,
+    initialAssets: 500,
+    births: { birthDad: 1988, birthMom: 1990, birthChild1: 2021, birthChild2: null },
+    cells: {},
+    investments: [],
+    lifeEvents: [],
+    insurances: [],
+    monthlyCells: {},
+  };
+}
+
+function loadData() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if (saved) {
+      if (!saved.investments) saved.investments = [];
+      if (!saved.lifeEvents) saved.lifeEvents = [];
+      if (!saved.insurances) saved.insurances = [];
+      if (!saved.monthlyCells) saved.monthlyCells = {};
+      return saved;
+    }
+  } catch (e) {}
+  return defaultData();
+}
+
+function saveData() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+// --- 共有カテゴリストア（kakeibo.htmlと共通、lifeMoneyCategoriesV1） ---
+
+const CATEGORY_STORAGE_KEY = 'lifeMoneyCategoriesV1';
+
+function defaultCategoryStore() {
+  return {
+    groups: [
+      { id: 'housing',    name: '住居' },
+      { id: 'food',       name: '食費' },
+      { id: 'daily',      name: '日用品' },
+      { id: 'utility',    name: '光熱・通信' },
+      { id: 'transport',  name: '交通' },
+      { id: 'medical',    name: '医療・健康' },
+      { id: 'education',  name: '教育・子ども' },
+      { id: 'clothing',   name: '衣類・美容' },
+      { id: 'hobby',      name: '趣味・娯楽' },
+      { id: 'social',     name: '交際' },
+      { id: 'instax',     name: '保険・税金' },
+      { id: 'selfinvest', name: '自己投資' },
+      { id: 'travel',     name: '旅行・イベント' },
+      { id: 'special',    name: '特別支出' },
+      { id: 'savings',    name: '貯蓄・投資' },
+    ],
+    categories: [
+      { id: 'rent',            name: '家賃',           groupId: 'housing' },
+      { id: 'mortgage',        name: '住宅ローン',     groupId: 'housing' },
+      { id: 'housing_other',   name: '住居費(その他)', groupId: 'housing' },
+      { id: 'groceries',       name: '食材',           groupId: 'food' },
+      { id: 'dining_out',      name: '外食',           groupId: 'food' },
+      { id: 'daily',           name: '日用品',         groupId: 'daily' },
+      { id: 'electricity',     name: '電気',           groupId: 'utility' },
+      { id: 'gas',             name: 'ガス',           groupId: 'utility' },
+      { id: 'water',           name: '水道',           groupId: 'utility' },
+      { id: 'telecom',         name: '通信',           groupId: 'utility' },
+      { id: 'public_transport', name: '公共交通',      groupId: 'transport' },
+      { id: 'car',             name: '車',             groupId: 'transport' },
+      { id: 'hospital',        name: '病院',           groupId: 'medical' },
+      { id: 'health',          name: '健康維持',       groupId: 'medical' },
+      { id: 'school',          name: '学校費',         groupId: 'education' },
+      { id: 'lessons',         name: '習い事',         groupId: 'education' },
+      { id: 'edu_other',       name: '教育費(その他)', groupId: 'education' },
+      { id: 'clothes',         name: '衣類',           groupId: 'clothing' },
+      { id: 'beauty',          name: '美容',           groupId: 'clothing' },
+      { id: 'hobby',           name: '趣味',           groupId: 'hobby' },
+      { id: 'entertainment',   name: 'エンタメ',       groupId: 'hobby' },
+      { id: 'subscription',    name: 'サブスク',       groupId: 'hobby' },
+      { id: 'drinking',        name: '飲み会',         groupId: 'social' },
+      { id: 'gift',            name: 'プレゼント',     groupId: 'social' },
+      { id: 'ceremony',        name: '冠婚葬祭',       groupId: 'social' },
+      { id: 'insurance',       name: '保険',           groupId: 'instax' },
+      { id: 'tax',             name: '税金',           groupId: 'instax' },
+      { id: 'learning',        name: '学習',           groupId: 'selfinvest' },
+      { id: 'work',            name: '仕事関連',       groupId: 'selfinvest' },
+      { id: 'trip',            name: '旅行',           groupId: 'travel' },
+      { id: 'leisure_travel',  name: 'レジャー',       groupId: 'travel' },
+      { id: 'appliance',       name: '家電',           groupId: 'special' },
+      { id: 'moving',          name: '引越し',         groupId: 'special' },
+      { id: 'wedding',         name: '結婚',           groupId: 'special' },
+      { id: 'big_expense',     name: '大型出費',       groupId: 'special' },
+      { id: 'savings',         name: '貯金',           groupId: 'savings' },
+      { id: 'living',          name: '生活費(その他)', groupId: null },
+      { id: 'other_exp',       name: 'その他支出',     groupId: null },
+    ],
+  };
+}
+
+function loadCategoryStore() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(CATEGORY_STORAGE_KEY));
+    if (saved && saved.groups && saved.categories) return saved;
+  } catch (e) {}
+  return null;
+}
+
+function saveCategoryStore(store) {
+  localStorage.setItem(CATEGORY_STORAGE_KEY, JSON.stringify(store));
+}
+
+function ensureCategoryStore() {
+  let store = loadCategoryStore();
+  if (!store) {
+    store = defaultCategoryStore();
+    saveCategoryStore(store);
+  }
+  return store;
+}
+
+let categoryStore = ensureCategoryStore();
+
+// 旧「▶コピー」等で全年に焼き付いた重複値を掃除し、フォワードフィルが効く状態に戻す。
+// 表示される実効値は変えず、「前の年と同じ値」の明示セルだけを削除する（基準点は残す）。
+function migrateData() {
+  const years = getYears();
+  let changed = false;
+  ROWS.forEach(row => {
+    if (row.type !== 'editable' || !row.forwardFill) return;
+    if (!data.cells[row.id]) return;
+    let carry = row.default || 0;
+    years.forEach(year => {
+      const v = data.cells[row.id][year];
+      if (v === undefined || v === null) return;
+      if (v === carry) {
+        delete data.cells[row.id][year];
+        changed = true;
+      } else {
+        carry = v;
+      }
+    });
+  });
+
+  // 旧形式（手入力の「イベント費」とテキストの「イベント」名）を lifeEvents に変換。
+  if (data.cells.expEvent || data.cells.event) {
+    const evCells = data.cells.expEvent || {};
+    const nameCells = data.cells.event || {};
+    const yearKeys = new Set([...Object.keys(evCells), ...Object.keys(nameCells)]);
+    yearKeys.forEach(yStr => {
+      const amount = parseFloat(evCells[yStr]) || 0;
+      const name = nameCells[yStr] || 'イベント';
+      if (amount !== 0 || nameCells[yStr]) {
+        data.lifeEvents.push({ id: 'ev' + Date.now() + Math.floor(Math.random() * 10000), name, year: parseInt(yStr), amount });
+      }
+    });
+    delete data.cells.expEvent;
+    delete data.cells.event;
+    changed = true;
+  }
+
+  // 旧「保険料」(単一行・フォワードフィル default:30)を保険テーブルに変換。
+  // 各年の実効値をそのままコピーするので、見た目の値は変わらない。
+  if (!data.migratedInsurance) {
+    const id = 'ins' + Date.now();
+    const premiumCells = {};
+    let carry = 30;
+    years.forEach(year => {
+      const stored = data.cells.expInsurance && data.cells.expInsurance[year];
+      const val = (stored !== undefined && stored !== null) ? stored : carry;
+      carry = val;
+      premiumCells[year] = val;
+    });
+    data.insurances.push({ id, name: '生命保険', payoutYear: null, payoutAmount: 0 });
+    data.cells['ins_' + id + '_premium'] = premiumCells;
+    if (data.monthlyCells.expInsurance) {
+      data.monthlyCells['ins_' + id + '_premium'] = data.monthlyCells.expInsurance;
+      delete data.monthlyCells.expInsurance;
+    }
+    delete data.cells.expInsurance;
+    data.migratedInsurance = true;
+    ROWS = buildRows();
+    changed = true;
+  }
+
+  // 旧「生活費/住居費/教育費/その他支出」の固定4行を、分類ベースの行へ移行。
+  if (!data.migratedExpenseCategories) {
+    const rowMap = {
+      expLiving:    { catId: 'living',        name: '生活費(その他)', groupId: null },
+      expHousing:   { catId: 'housing_other', name: '住居費(その他)', groupId: 'housing' },
+      expEducation: { catId: 'edu_other',     name: '教育費(その他)', groupId: 'education' },
+      expOther:     { catId: 'other_exp',     name: 'その他支出',     groupId: null },
+    };
+    let storeChanged = false;
+    Object.entries(rowMap).forEach(([oldId, info]) => {
+      const newRowId = `cat_${info.catId}`;
+      if (data.cells[oldId]) {
+        data.cells[newRowId] = data.cells[oldId];
+        delete data.cells[oldId];
+        changed = true;
+      }
+      if (data.monthlyCells[oldId]) {
+        data.monthlyCells[newRowId] = data.monthlyCells[oldId];
+        delete data.monthlyCells[oldId];
+        changed = true;
+      }
+      if (!categoryStore.categories.some(c => c.id === info.catId)) {
+        categoryStore.categories.push({ id: info.catId, name: info.name, groupId: info.groupId });
+        storeChanged = true;
+      }
+    });
+    if (storeChanged) saveCategoryStore(categoryStore);
+    data.migratedExpenseCategories = true;
+    ROWS = buildRows();
+    changed = true;
+  }
+
+  if (changed) saveData();
+}
+
+// その年の保険料合計（万円）。
+function insurancePremiumTotal(year) {
+  return data.insurances.reduce((s, ins) => s + getYearlyEffectiveValue(`ins_${ins.id}_premium`, year), 0);
+}
+
+// その年の保険受取（学資保険など）合計（万円）。
+function insurancePayoutTotal(year) {
+  return data.insurances.reduce((s, ins) => s + (ins.payoutYear === year ? (ins.payoutAmount || 0) : 0), 0);
+}
+
+// その年のライフイベント費の合計（万円）。
+function lifeEventCost(year) {
+  return data.lifeEvents.reduce((s, ev) => s + (ev.year === year ? (ev.amount || 0) : 0), 0);
+}
+
+// その年のライフイベント名（複数あれば「・」で連結）。
+function lifeEventNames(year) {
+  return data.lifeEvents.filter(ev => ev.year === year).map(ev => ev.name).join('・');
+}
+
+function buildInvestmentRows() {
+  if (!data.investments.length) return [];
+  const rows = [{ section: '投資資産（万円/年）' }];
+  data.investments.forEach(inv => {
+    rows.push({ id: `inv_${inv.id}_contrib`, label: `${inv.name} 投資額`, type: 'editable', default: 0, forwardFill: 'full', invId: inv.id });
+    rows.push({ id: `inv_${inv.id}_balance`, label: `${inv.name} 残高`, type: 'computed', invId: inv.id });
+  });
+  return rows;
+}
+
+function buildInsuranceRows() {
+  if (!data.insurances.length) return [];
+  const rows = [{ section: '保険（万円/年）' }];
+  data.insurances.forEach(ins => {
+    rows.push({ id: `ins_${ins.id}_premium`, label: `${ins.name} 保険料`, type: 'editable', default: 0, forwardFill: 'full', insId: ins.id });
+  });
+  return rows;
+}
+
+// 分類ストアから支出の行を動的に生成（大項目ごとの合計行 + 配下の分類行、未分類の分類は最後にインデント無しで並べる）。
+function buildExpenseCategoryRows() {
+  const rows = [];
+  categoryStore.groups.forEach(group => {
+    const cats = categoryStore.categories.filter(c => c.groupId === group.id);
+    if (!cats.length) return;
+    rows.push({ id: `catgrp_${group.id}`, label: group.name, type: 'computed', groupId: group.id });
+    cats.forEach(cat => {
+      rows.push({ id: `cat_${cat.id}`, label: `　${cat.name}`, type: 'editable', default: 0, forwardFill: 'full', catId: cat.id, groupId: group.id });
+    });
+  });
+  categoryStore.categories.filter(c => !c.groupId).forEach(cat => {
+    rows.push({ id: `cat_${cat.id}`, label: cat.name, type: 'editable', default: 0, forwardFill: 'full', catId: cat.id, groupId: null });
+  });
+  return rows;
+}
+
+// 支出の分類行（leaf）一覧。
+function expenseCategoryRows() {
+  return ROWS.filter(r => r.catId !== undefined);
+}
+
+function buildRows() {
+  return [
+    ...AGE_ROWS,
+    ...EVENT_ROWS,
+    ...INCOME_ROWS,
+    { section: '支出（万円/年）' },
+    ...buildExpenseCategoryRows(),
+    ...EXPENSE_SUMMARY_ROWS,
+    ...buildInsuranceRows(),
+    ...buildInvestmentRows(),
+    ...ASSET_ROWS,
+  ];
+}
+
+let ROWS = buildRows();
+
+function isInherited(rowId, year) {
+  const stored = data.cells[rowId] && data.cells[rowId][year];
+  return stored === undefined || stored === null;
+}
+
+function getCellValue(rowId, year) {
+  const row = ROWS.find(r => r.id === rowId);
+  const stored = data.cells[rowId] && data.cells[rowId][year];
+  if (stored !== undefined && stored !== null) return stored;
+
+  if (row.type === 'text') return '';
+
+  const years = getYears();
+
+  if (row.forwardFill === 'full') {
+    for (let y = year - 1; y >= years[0]; y--) {
+      const v = data.cells[rowId] && data.cells[rowId][y];
+      if (v !== undefined && v !== null) return v;
+    }
+    return row.default || 0;
+  }
+
+  return row.default || 0;
+}
+
+function setCellValue(rowId, year, value) {
+  if (!data.cells[rowId]) data.cells[rowId] = {};
+  data.cells[rowId][year] = value;
+  clearMonthlyOverrides(rowId, year);
+}
+
+// 指定年より後ろの明示値・月別上書きをすべて削除する（編集年以降をフォワードフィルに委ねる）。
+function clearCellsAfter(rowId, year) {
+  getYears().forEach(y => {
+    if (y <= year) return;
+    if (data.cells[rowId]) delete data.cells[rowId][y];
+    if (data.monthlyCells[rowId]) delete data.monthlyCells[rowId][y];
+  });
+}
+
+// --- monthly cells ---
+
+function getMonthlyOverride(rowId, year, month) {
+  return data.monthlyCells[rowId] && data.monthlyCells[rowId][year]
+    ? data.monthlyCells[rowId][year][month]
+    : undefined;
+}
+
+function setMonthlyOverride(rowId, year, month, value) {
+  if (!data.monthlyCells[rowId]) data.monthlyCells[rowId] = {};
+  if (!data.monthlyCells[rowId][year]) data.monthlyCells[rowId][year] = {};
+  data.monthlyCells[rowId][year][month] = value;
+}
+
+function clearMonthlyOverrides(rowId, year) {
+  if (data.monthlyCells[rowId]) delete data.monthlyCells[rowId][year];
+}
+
+function hasMonthlyOverrides(rowId, year) {
+  return !!(data.monthlyCells[rowId] && data.monthlyCells[rowId][year] &&
+    Object.keys(data.monthlyCells[rowId][year]).length > 0);
+}
+
+function getMonthlyEffectiveValue(rowId, year, month) {
+  const override = getMonthlyOverride(rowId, year, month);
+  if (override !== undefined) return override;
+  return getCellValue(rowId, year) / 12;
+}
+
+function getYearlyEffectiveValue(rowId, year) {
+  if (!hasMonthlyOverrides(rowId, year)) return getCellValue(rowId, year);
+  let sum = 0;
+  for (let m = 1; m <= 12; m++) sum += getMonthlyEffectiveValue(rowId, year, m);
+  return sum;
+}
+
+function roundMoney(v) {
+  return Math.round(v * 10) / 10;
+}
+
+function getYears() {
+  return Array.from({ length: data.numYears }, (_, i) => data.startYear + i);
+}
+
+function initSettingsInputs() {
+  document.getElementById('startYear').value = data.startYear;
+  document.getElementById('numYears').value = data.numYears;
+  document.getElementById('initialAssets').value = data.initialAssets;
+  BIRTH_IDS.forEach(id => {
+    document.getElementById(id).value = data.births[id] ?? '';
+  });
+
+  document.getElementById('startYear').addEventListener('change', e => {
+    data.startYear = parseInt(e.target.value) || 2026;
+    saveData();
+    generateTable();
+    generateMonthlyTable();
+  });
+  document.getElementById('numYears').addEventListener('change', e => {
+    data.numYears = Math.max(1, parseInt(e.target.value) || 1);
+    saveData();
+    generateTable();
+    generateMonthlyTable();
+  });
+  document.getElementById('initialAssets').addEventListener('input', e => {
+    data.initialAssets = parseFloat(e.target.value) || 0;
+    saveData();
+    recalcAll();
+  });
+  document.getElementById('initialAssets').addEventListener('wheel', () => document.getElementById('initialAssets').blur());
+  BIRTH_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    el.addEventListener('input', e => {
+      const v = e.target.value;
+      data.births[id] = v === '' ? null : parseInt(v);
+      saveData();
+      recalcAll();
+    });
+    el.addEventListener('wheel', () => el.blur());
+  });
+}
+
+// --- investment settings UI ---
+
+// 「分類の設定」UI（大項目の作成・改名・削除、分類の追加・改名・移動・削除）。
+// kakeibo.htmlにも同じ実装が複製されている。変更内容は共有ストア(lifeMoneyCategoriesV1)を介して両ページに反映される。
+// 「分類の設定」の大項目ごとの開閉状態。大項目ID(未分類は'__none__')のSet。
+// 初回はcategoryStoreの全大項目+未分類を入れて、デフォルト全て折りたたみにする。
+let collapsedCategoryGroups = null;
+
+function renderCategorySettings() {
+  const container = document.getElementById('categoryGroupList');
+  container.innerHTML = '';
+
+  if (!collapsedCategoryGroups) {
+    collapsedCategoryGroups = new Set(categoryStore.groups.map(g => g.id));
+    collapsedCategoryGroups.add('__none__');
+  }
+
+  const blocks = categoryStore.groups.map(g => ({ group: g }));
+  blocks.push({ group: null });
+
+  blocks.forEach(({ group }) => {
+    const cats = categoryStore.categories.filter(c => (c.groupId || null) === (group ? group.id : null));
+    if (!group && cats.length === 0) return;
+
+    const groupKey = group ? group.id : '__none__';
+    const isCollapsed = collapsedCategoryGroups.has(groupKey);
+
+    const groupDiv = document.createElement('div');
+    groupDiv.className = 'category-group' + (isCollapsed ? ' collapsed' : '');
+
+    const header = document.createElement('div');
+    header.className = 'category-group-header';
+    const toggleBtn = `<button type="button" class="group-toggle-btn" data-group-key="${groupKey}">${isCollapsed ? '▶' : '▼'}</button>`;
+    if (group) {
+      header.innerHTML = `
+        ${toggleBtn}
+        <input type="text" class="inv-name group-name" value="${group.name}" data-group-id="${group.id}">
+        <button class="del-investment-btn del-group-btn" data-group-id="${group.id}">大項目を削除</button>
+      `;
+    } else {
+      header.innerHTML = `${toggleBtn}<span class="group-name-label">未分類</span>`;
+    }
+    groupDiv.appendChild(header);
+
+    const groupOptions = categoryStore.groups.map(g => `<option value="${g.id}">${g.name}</option>`).join('');
+    cats.forEach(cat => {
+      const row = document.createElement('div');
+      row.className = 'investment-row';
+      row.innerHTML = `
+        <input type="text" class="inv-name cat-name" value="${cat.name}" data-cat-id="${cat.id}">
+        <label>大項目<select class="cat-group-select" data-cat-id="${cat.id}">
+          <option value="">未分類</option>
+          ${groupOptions}
+        </select></label>
+        <button class="del-investment-btn del-cat-btn" data-cat-id="${cat.id}">削除</button>
+      `;
+      row.querySelector('.cat-group-select').value = cat.groupId || '';
+      groupDiv.appendChild(row);
+    });
+
+    const addBtn = document.createElement('button');
+    addBtn.className = 'add-btn cat-add-btn';
+    addBtn.textContent = '+ この大項目に分類を追加';
+    addBtn.dataset.groupId = group ? group.id : '';
+    groupDiv.appendChild(addBtn);
+
+    container.appendChild(groupDiv);
+  });
+
+  container.querySelectorAll('.group-name').forEach(el => {
+    el.addEventListener('input', e => {
+      const g = categoryStore.groups.find(g => g.id === e.target.dataset.groupId);
+      g.name = e.target.value;
+      saveCategoryStore(categoryStore);
+      ROWS = buildRows();
+      generateTable();
+      generateMonthlyTable();
+    });
+  });
+  container.querySelectorAll('.del-group-btn').forEach(el => {
+    el.addEventListener('click', e => {
+      const id = e.target.dataset.groupId;
+      categoryStore.groups = categoryStore.groups.filter(g => g.id !== id);
+      categoryStore.categories.forEach(c => { if (c.groupId === id) c.groupId = null; });
+      saveCategoryStore(categoryStore);
+      ROWS = buildRows();
+      renderCategorySettings();
+      generateTable();
+      generateMonthlyTable();
+    });
+  });
+  container.querySelectorAll('.cat-name').forEach(el => {
+    el.addEventListener('input', e => {
+      const c = categoryStore.categories.find(c => c.id === e.target.dataset.catId);
+      c.name = e.target.value;
+      saveCategoryStore(categoryStore);
+      ROWS = buildRows();
+      generateTable();
+      generateMonthlyTable();
+    });
+  });
+  container.querySelectorAll('.cat-group-select').forEach(el => {
+    el.addEventListener('change', e => {
+      const c = categoryStore.categories.find(c => c.id === e.target.dataset.catId);
+      c.groupId = e.target.value || null;
+      saveCategoryStore(categoryStore);
+      ROWS = buildRows();
+      renderCategorySettings();
+      generateTable();
+      generateMonthlyTable();
+    });
+  });
+  container.querySelectorAll('.del-cat-btn').forEach(el => {
+    el.addEventListener('click', e => {
+      const id = e.target.dataset.catId;
+      categoryStore.categories = categoryStore.categories.filter(c => c.id !== id);
+      const rowId = `cat_${id}`;
+      delete data.cells[rowId];
+      delete data.monthlyCells[rowId];
+      saveCategoryStore(categoryStore);
+      saveData();
+      ROWS = buildRows();
+      renderCategorySettings();
+      generateTable();
+      generateMonthlyTable();
+    });
+  });
+  container.querySelectorAll('.cat-add-btn').forEach(el => {
+    el.addEventListener('click', e => {
+      const groupId = e.target.dataset.groupId || null;
+      categoryStore.categories.push({ id: 'c' + Date.now() + Math.floor(Math.random() * 10000), name: '新しい分類', groupId });
+      saveCategoryStore(categoryStore);
+      ROWS = buildRows();
+      renderCategorySettings();
+      generateTable();
+      generateMonthlyTable();
+    });
+  });
+  container.querySelectorAll('.group-toggle-btn').forEach(el => {
+    el.addEventListener('click', e => {
+      const key = e.target.dataset.groupKey;
+      if (collapsedCategoryGroups.has(key)) {
+        collapsedCategoryGroups.delete(key);
+      } else {
+        collapsedCategoryGroups.add(key);
+      }
+      renderCategorySettings();
+    });
+  });
+}
+
+document.getElementById('addCategoryGroupBtn').addEventListener('click', () => {
+  categoryStore.groups.push({ id: 'g' + Date.now() + Math.floor(Math.random() * 10000), name: '新しい大項目' });
+  saveCategoryStore(categoryStore);
+  renderCategorySettings();
+});
+
+function renderInvestmentSettings() {
+  const container = document.getElementById('investmentList');
+  container.innerHTML = '';
+
+  if (data.investments.length === 0) {
+    const p = document.createElement('p');
+    p.className = 'empty-note';
+    p.textContent = '投資先が登録されていません。NISAや個別株などを追加すると、タイムラインに「投資額」「残高」の行が追加され、総資産に統合されます。';
+    container.appendChild(p);
+  }
+
+  data.investments.forEach(inv => {
+    const row = document.createElement('div');
+    row.className = 'investment-row';
+    row.innerHTML = `
+      <input type="text" class="inv-name" value="${inv.name}" data-id="${inv.id}">
+      <label>年率%<input type="number" class="inv-rate" value="${inv.rate}" step="0.1" data-id="${inv.id}"></label>
+      <label>初期残高(万円)<input type="number" class="inv-balance" value="${inv.initialBalance}" data-id="${inv.id}"></label>
+      <button class="del-investment-btn" data-id="${inv.id}">削除</button>
+    `;
+    container.appendChild(row);
+  });
+
+  container.querySelectorAll('.inv-name').forEach(el => {
+    el.addEventListener('input', e => {
+      const inv = data.investments.find(i => i.id === e.target.dataset.id);
+      inv.name = e.target.value;
+      saveData();
+      ROWS = buildRows();
+      generateTable();
+      generateMonthlyTable();
+    });
+  });
+  container.querySelectorAll('.inv-rate').forEach(el => {
+    el.addEventListener('input', e => {
+      const inv = data.investments.find(i => i.id === e.target.dataset.id);
+      inv.rate = parseFloat(e.target.value) || 0;
+      saveData();
+      recalcAll();
+    });
+    el.addEventListener('wheel', () => el.blur());
+  });
+  container.querySelectorAll('.inv-balance').forEach(el => {
+    el.addEventListener('input', e => {
+      const inv = data.investments.find(i => i.id === e.target.dataset.id);
+      inv.initialBalance = parseFloat(e.target.value) || 0;
+      saveData();
+      recalcAll();
+    });
+    el.addEventListener('wheel', () => el.blur());
+  });
+  container.querySelectorAll('.del-investment-btn').forEach(el => {
+    el.addEventListener('click', e => {
+      const id = e.target.dataset.id;
+      data.investments = data.investments.filter(i => i.id !== id);
+      delete data.cells[`inv_${id}_contrib`];
+      delete data.cells[`inv_${id}_balance`];
+      delete data.monthlyCells[`inv_${id}_contrib`];
+      saveData();
+      ROWS = buildRows();
+      renderInvestmentSettings();
+      generateTable();
+      generateMonthlyTable();
+    });
+  });
+}
+
+document.getElementById('addInvestmentBtn').addEventListener('click', () => {
+  const n = data.investments.length + 1;
+  data.investments.push({ id: 'inv' + Date.now(), name: '投資' + n, rate: 5, initialBalance: 0 });
+  saveData();
+  ROWS = buildRows();
+  renderInvestmentSettings();
+  generateTable();
+  generateMonthlyTable();
+});
+
+function renderLifeEventSettings() {
+  const container = document.getElementById('lifeEventList');
+  container.innerHTML = '';
+
+  if (data.lifeEvents.length === 0) {
+    const p = document.createElement('p');
+    p.className = 'empty-note';
+    p.textContent = '車購入・旅行・入学・リフォームなどの人生イベントを「名称・年・金額」で登録すると、その年の「イベント費」に自動加算され、支出合計・資産に反映されます。タイムラインの「イベント」行に名称が表示されます。';
+    container.appendChild(p);
+  }
+
+  // 年でソートして表示（データ自体の順番は変えない）
+  const sorted = [...data.lifeEvents].sort((a, b) => (a.year || 0) - (b.year || 0));
+  sorted.forEach(ev => {
+    const row = document.createElement('div');
+    row.className = 'investment-row';
+    row.innerHTML = `
+      <input type="text" class="inv-name ev-field" value="${ev.name}" data-id="${ev.id}" data-field="name">
+      <label>年<input type="number" class="ev-field" value="${ev.year}" data-id="${ev.id}" data-field="year"></label>
+      <label>金額(万円)<input type="number" class="ev-field" value="${ev.amount}" data-id="${ev.id}" data-field="amount"></label>
+      <button class="del-investment-btn ev-del" data-id="${ev.id}">削除</button>
+    `;
+    container.appendChild(row);
+  });
+
+  container.querySelectorAll('.ev-field').forEach(el => {
+    el.addEventListener('input', e => {
+      const ev = data.lifeEvents.find(x => x.id === e.target.dataset.id);
+      if (!ev) return;
+      const field = e.target.dataset.field;
+      if (field === 'name') ev.name = e.target.value;
+      else if (field === 'year') ev.year = parseInt(e.target.value) || data.startYear;
+      else if (field === 'amount') ev.amount = parseFloat(e.target.value) || 0;
+      saveData();
+      recalcAll();
+    });
+    if (el.type === 'number') el.addEventListener('wheel', () => el.blur());
+  });
+  container.querySelectorAll('.ev-del').forEach(el => {
+    el.addEventListener('click', e => {
+      data.lifeEvents = data.lifeEvents.filter(x => x.id !== e.target.dataset.id);
+      saveData();
+      renderLifeEventSettings();
+      recalcAll();
+    });
+  });
+}
+
+document.getElementById('addLifeEventBtn').addEventListener('click', () => {
+  data.lifeEvents.push({ id: 'ev' + Date.now(), name: 'イベント', year: data.startYear, amount: 0 });
+  saveData();
+  renderLifeEventSettings();
+  recalcAll();
+});
+
+function renderInsuranceSettings() {
+  const container = document.getElementById('insuranceList');
+  container.innerHTML = '';
+
+  if (data.insurances.length === 0) {
+    const p = document.createElement('p');
+    p.className = 'empty-note';
+    p.textContent = '生命保険・学資保険などを登録すると、タイムラインに「○○ 保険料」の行が追加され、支出合計に統合されます。受取年・受取額を指定すると、その年の「保険受取」として収入合計に加算されます。';
+    container.appendChild(p);
+  }
+
+  data.insurances.forEach(ins => {
+    const row = document.createElement('div');
+    row.className = 'investment-row';
+    row.innerHTML = `
+      <input type="text" class="inv-name ins-field" value="${ins.name}" data-id="${ins.id}" data-field="name">
+      <label>受取年(なければ空欄)<input type="number" class="ins-field" value="${ins.payoutYear ?? ''}" data-id="${ins.id}" data-field="payoutYear"></label>
+      <label>受取額(万円)<input type="number" class="ins-field" value="${ins.payoutAmount}" data-id="${ins.id}" data-field="payoutAmount"></label>
+      <button class="del-investment-btn ins-del" data-id="${ins.id}">削除</button>
+    `;
+    container.appendChild(row);
+  });
+
+  container.querySelectorAll('.ins-field').forEach(el => {
+    el.addEventListener('input', e => {
+      const ins = data.insurances.find(x => x.id === e.target.dataset.id);
+      if (!ins) return;
+      const field = e.target.dataset.field;
+      if (field === 'name') {
+        ins.name = e.target.value;
+        saveData();
+        ROWS = buildRows();
+        generateTable();
+        generateMonthlyTable();
+        return;
+      } else if (field === 'payoutYear') {
+        ins.payoutYear = e.target.value === '' ? null : (parseInt(e.target.value) || null);
+      } else if (field === 'payoutAmount') {
+        ins.payoutAmount = parseFloat(e.target.value) || 0;
+      }
+      saveData();
+      recalcAll();
+    });
+    if (el.type === 'number') el.addEventListener('wheel', () => el.blur());
+  });
+  container.querySelectorAll('.ins-del').forEach(el => {
+    el.addEventListener('click', e => {
+      const id = e.target.dataset.id;
+      data.insurances = data.insurances.filter(x => x.id !== id);
+      delete data.cells[`ins_${id}_premium`];
+      delete data.monthlyCells[`ins_${id}_premium`];
+      saveData();
+      ROWS = buildRows();
+      renderInsuranceSettings();
+      generateTable();
+      generateMonthlyTable();
+    });
+  });
+}
+
+document.getElementById('addInsuranceBtn').addEventListener('click', () => {
+  const n = data.insurances.length + 1;
+  data.insurances.push({ id: 'ins' + Date.now(), name: '保険' + n, payoutYear: null, payoutAmount: 0 });
+  saveData();
+  ROWS = buildRows();
+  renderInsuranceSettings();
+  generateTable();
+  generateMonthlyTable();
+});
+
+// --- annual timeline table ---
+
+// 支出の大項目ごとの折りたたみ状態(年次・月次グリッド共通)。大項目IDのSet。デフォルトは全て折りたたみ。
+let collapsedExpenseGroups = null;
+
+function ensureCollapsedExpenseGroups() {
+  if (collapsedExpenseGroups) return;
+  collapsedExpenseGroups = new Set(
+    categoryStore.groups
+      .filter(g => categoryStore.categories.some(c => c.groupId === g.id))
+      .map(g => g.id)
+  );
+}
+
+// 大項目の開閉を切り替え、配下の分類行(年次・月次両方)の表示/非表示とトグルボタンの矢印を更新する。
+function toggleExpenseGroup(groupId) {
+  if (collapsedExpenseGroups.has(groupId)) {
+    collapsedExpenseGroups.delete(groupId);
+  } else {
+    collapsedExpenseGroups.add(groupId);
+  }
+  const collapsed = collapsedExpenseGroups.has(groupId);
+  document.querySelectorAll(`tr[data-parent-group="${groupId}"]`).forEach(tr => {
+    tr.style.display = collapsed ? 'none' : '';
+  });
+  document.querySelectorAll(`.row-group-toggle[data-group-id="${groupId}"]`).forEach(btn => {
+    btn.textContent = collapsed ? '▶' : '▼';
+  });
+}
+
+function generateTable() {
+  const years = getYears();
+  ensureCollapsedExpenseGroups();
+
+  const headerRow = document.getElementById('yearHeaderRow');
+  headerRow.innerHTML = '<th class="row-label">項目</th>' +
+    years.map(y => `<th>${y}</th>`).join('');
+
+  const body = document.getElementById('timelineBody');
+  body.innerHTML = '';
+
+  ROWS.forEach(row => {
+    if (row.section) {
+      const tr = document.createElement('tr');
+      tr.className = 'section-row';
+      const td = document.createElement('td');
+      td.colSpan = years.length + 1;
+      td.textContent = row.section;
+      tr.appendChild(td);
+      body.appendChild(tr);
+      return;
+    }
+
+    const tr = document.createElement('tr');
+    tr.dataset.rowId = row.id;
+    if (row.type === 'computed') tr.className = 'computed-row';
+
+    const labelTd = document.createElement('td');
+    labelTd.className = 'row-label';
+    if (row.id.startsWith('catgrp_')) {
+      const collapsed = collapsedExpenseGroups.has(row.groupId);
+      labelTd.innerHTML = `<button type="button" class="row-group-toggle" data-group-id="${row.groupId}">${collapsed ? '▶' : '▼'}</button>${row.label}`;
+    } else {
+      labelTd.textContent = row.label;
+    }
+    if (row.catId !== undefined && row.groupId) {
+      tr.dataset.parentGroup = row.groupId;
+      if (collapsedExpenseGroups.has(row.groupId)) tr.style.display = 'none';
+    }
+    tr.appendChild(labelTd);
+
+    years.forEach(year => {
+      const td = document.createElement('td');
+      if (row.type === 'age') {
+        td.className = 'age-cell';
+        td.dataset.rowId = row.id;
+        td.dataset.year = year;
+      } else if (row.type === 'computed') {
+        td.className = 'computed-cell';
+        td.dataset.rowId = row.id;
+        td.dataset.year = year;
+      } else if (row.type === 'eventname') {
+        td.className = 'event-name-cell';
+        td.dataset.rowId = row.id;
+        td.dataset.year = year;
+      } else {
+        const input = document.createElement('input');
+        input.className = row.type === 'text' ? 'cell-input event-input' : 'cell-input';
+        input.type = row.type === 'text' ? 'text' : 'number';
+        input.dataset.rowId = row.id;
+        input.dataset.year = year;
+        if (row.type === 'editable') {
+          input.value = getYearlyEffectiveValue(row.id, year);
+          input.classList.toggle('inherited', isInherited(row.id, year));
+        } else {
+          input.value = getCellValue(row.id, year);
+        }
+        input.addEventListener('input', onCellInput);
+        if (input.type === 'number') {
+          input.addEventListener('wheel', () => input.blur());
+        }
+        td.appendChild(input);
+      }
+      tr.appendChild(td);
+    });
+
+    body.appendChild(tr);
+  });
+
+  body.querySelectorAll('.row-group-toggle').forEach(btn => {
+    btn.addEventListener('click', () => toggleExpenseGroup(btn.dataset.groupId));
+  });
+
+  recalcAll();
+}
+
+function onCellInput(e) {
+  const rowId = e.target.dataset.rowId;
+  const year = parseInt(e.target.dataset.year);
+  const row = ROWS.find(r => r.id === rowId);
+  const value = row.type === 'text' ? e.target.value : (parseFloat(e.target.value) || 0);
+  setCellValue(rowId, year, value);
+  // フォワードフィル対象の行は、編集した年より後ろの明示値・月別上書きをすべてクリアし、
+  // 「編集した年からそれ以降ずっとこの値」になるようにする（後ろに古い値が残っていても確実に追従）。
+  if (row.forwardFill) clearCellsAfter(rowId, year);
+  saveData();
+  recalcAll();
+}
+
+function setComputedCell(rowId, year, value) {
+  const td = document.querySelector(`#timelineBody td.computed-cell[data-row-id="${rowId}"][data-year="${year}"]`);
+  if (!td) return;
+  td.textContent = Math.round(value).toLocaleString();
+  td.classList.toggle('negative', value < 0);
+}
+
+function updateInputCells(years) {
+  ROWS.forEach(row => {
+    if (row.type !== 'editable') return;
+    years.forEach(year => {
+      const input = document.querySelector(`#timelineBody input[data-row-id="${row.id}"][data-year="${year}"]`);
+      if (!input || input === document.activeElement) return;
+      input.value = getYearlyEffectiveValue(row.id, year);
+      input.classList.toggle('inherited', isInherited(row.id, year));
+    });
+  });
+}
+
+// --- monthly planner ---
+
+function initMonthlyYearSelect() {
+  const sel = document.getElementById('monthlyYearSelect');
+  const years = getYears();
+  sel.innerHTML = years.map(y => `<option value="${y}">${y}年</option>`).join('');
+  if (data.monthlySelectedYear === undefined || !years.includes(data.monthlySelectedYear)) {
+    data.monthlySelectedYear = years[0];
+  }
+  sel.value = data.monthlySelectedYear;
+  sel.onchange = () => {
+    data.monthlySelectedYear = parseInt(sel.value);
+    saveData();
+    generateMonthlyTable();
+  };
+}
+
+function getMonthlyRows() {
+  return ROWS.filter(r => r.type === 'editable' && r.forwardFill !== undefined);
+}
+
+const MONTHLY_TOTAL_LABELS = {
+  monthIncomeTotal: '月間収入合計',
+  monthExpenseTotal: '月間支出合計',
+  monthBalance: '月間収支',
+};
+
+function generateMonthlyTable() {
+  initMonthlyYearSelect();
+  const year = data.monthlySelectedYear;
+  ensureCollapsedExpenseGroups();
+
+  const headerRow = document.getElementById('monthHeaderRow');
+  headerRow.innerHTML = '<th class="row-label">項目</th><th>基準額(月額)</th>' +
+    Array.from({ length: 12 }, (_, i) => `<th>${i + 1}月</th>`).join('');
+
+  const body = document.getElementById('monthlyBody');
+  body.innerHTML = '';
+
+  getMonthlyRows().forEach(row => {
+    const tr = document.createElement('tr');
+    tr.dataset.rowId = row.id;
+    if (row.catId !== undefined && row.groupId) {
+      tr.dataset.parentGroup = row.groupId;
+      if (collapsedExpenseGroups.has(row.groupId)) tr.style.display = 'none';
+    }
+
+    const labelTd = document.createElement('td');
+    labelTd.className = 'row-label';
+    labelTd.innerHTML = `${row.label}<button class="copy-btn" title="この年の月別の上書きをリセット">リセット</button>`;
+    labelTd.querySelector('button').addEventListener('click', () => resetMonthlyRow(row.id));
+    tr.appendChild(labelTd);
+
+    const baseTd = document.createElement('td');
+    baseTd.className = 'base-cell';
+    const baseInput = document.createElement('input');
+    baseInput.className = 'cell-input base-input';
+    baseInput.type = 'number';
+    baseInput.dataset.rowId = row.id;
+    baseInput.value = roundMoney(getCellValue(row.id, year) / 12);
+    baseInput.classList.toggle('inherited', isInherited(row.id, year));
+    baseInput.addEventListener('input', onBaseCellInput);
+    baseInput.addEventListener('wheel', () => baseInput.blur());
+    baseTd.appendChild(baseInput);
+    tr.appendChild(baseTd);
+
+    for (let m = 1; m <= 12; m++) {
+      const td = document.createElement('td');
+      const input = document.createElement('input');
+      input.className = 'cell-input';
+      input.type = 'number';
+      input.dataset.rowId = row.id;
+      input.dataset.month = m;
+      input.value = roundMoney(getMonthlyEffectiveValue(row.id, year, m));
+      input.classList.toggle('inherited', getMonthlyOverride(row.id, year, m) === undefined);
+      input.addEventListener('input', onMonthlyCellInput);
+      input.addEventListener('wheel', () => input.blur());
+      td.appendChild(input);
+      tr.appendChild(td);
+    }
+
+    body.appendChild(tr);
+  });
+
+  Object.keys(MONTHLY_TOTAL_LABELS).forEach(id => {
+    const tr = document.createElement('tr');
+    tr.className = 'computed-row';
+    tr.dataset.rowId = id;
+    const labelTd = document.createElement('td');
+    labelTd.className = 'row-label';
+    labelTd.textContent = MONTHLY_TOTAL_LABELS[id];
+    tr.appendChild(labelTd);
+    const baseTd = document.createElement('td');
+    baseTd.className = 'base-cell';
+    tr.appendChild(baseTd);
+    for (let m = 1; m <= 12; m++) {
+      const td = document.createElement('td');
+      td.className = 'computed-cell';
+      td.dataset.rowId = id;
+      td.dataset.month = m;
+      tr.appendChild(td);
+    }
+    body.appendChild(tr);
+  });
+
+  recalcMonthlyTable();
+}
+
+function onBaseCellInput(e) {
+  const rowId = e.target.dataset.rowId;
+  const year = data.monthlySelectedYear;
+  const monthly = parseFloat(e.target.value) || 0;
+  // 基準額は月額入力。年間ベース値は月額×12として保存し、その年の月別上書きをリセット。
+  setCellValue(rowId, year, monthly * 12);
+  saveData();
+  recalcAll();
+}
+
+function onMonthlyCellInput(e) {
+  const rowId = e.target.dataset.rowId;
+  const month = parseInt(e.target.dataset.month);
+  const year = data.monthlySelectedYear;
+  const value = parseFloat(e.target.value) || 0;
+  setMonthlyOverride(rowId, year, month, value);
+  e.target.classList.remove('inherited');
+  saveData();
+  recalcAll();
+}
+
+function resetMonthlyRow(rowId) {
+  const year = data.monthlySelectedYear;
+  clearMonthlyOverrides(rowId, year);
+  saveData();
+  recalcAll();
+}
+
+function setMonthlyComputedCell(rowId, month, value) {
+  const td = document.querySelector(`#monthlyBody td.computed-cell[data-row-id="${rowId}"][data-month="${month}"]`);
+  if (!td) return;
+  td.textContent = roundMoney(value).toLocaleString();
+  td.classList.toggle('negative', value < 0);
+}
+
+function recalcMonthlyTable() {
+  const year = data.monthlySelectedYear;
+  if (year === undefined) return;
+
+  const monthIncomeTotals = Array(13).fill(0);
+  const monthExpenseTotals = Array(13).fill(0);
+
+  getMonthlyRows().forEach(row => {
+    const baseInput = document.querySelector(`#monthlyBody input.base-input[data-row-id="${row.id}"]`);
+    if (baseInput && baseInput !== document.activeElement) {
+      baseInput.value = roundMoney(getCellValue(row.id, year) / 12);
+      baseInput.classList.toggle('inherited', isInherited(row.id, year));
+    }
+
+    for (let m = 1; m <= 12; m++) {
+      const val = getMonthlyEffectiveValue(row.id, year, m);
+      const input = document.querySelector(`#monthlyBody input[data-row-id="${row.id}"][data-month="${m}"]`);
+      if (input && input !== document.activeElement) {
+        input.value = roundMoney(val);
+        input.classList.toggle('inherited', getMonthlyOverride(row.id, year, m) === undefined);
+      }
+      if (INCOME_IDS.includes(row.id)) monthIncomeTotals[m] += val;
+      if (row.catId !== undefined || row.insId !== undefined) monthExpenseTotals[m] += val;
+    }
+  });
+
+  for (let m = 1; m <= 12; m++) {
+    const inc = monthIncomeTotals[m];
+    const exp = monthExpenseTotals[m];
+    setMonthlyComputedCell('monthIncomeTotal', m, inc);
+    setMonthlyComputedCell('monthExpenseTotal', m, exp);
+    setMonthlyComputedCell('monthBalance', m, inc - exp);
+  }
+}
+
+// --- recalculation ---
+
+function recalcAll() {
+  const years = getYears();
+
+  ['ageDad','ageMom','ageChild1','ageChild2'].forEach(id => {
+    const birthKey = { ageDad: 'birthDad', ageMom: 'birthMom', ageChild1: 'birthChild1', ageChild2: 'birthChild2' }[id];
+    const birth = data.births[birthKey];
+    years.forEach(year => {
+      const td = document.querySelector(`td.age-cell[data-row-id="${id}"][data-year="${year}"]`);
+      if (td) td.textContent = birth ? (year - birth) : '-';
+    });
+  });
+
+  let prevCash = data.initialAssets;
+  const prevBalances = {};
+  data.investments.forEach(inv => { prevBalances[inv.id] = inv.initialBalance; });
+
+  const cashArr = [], investArr = [], totalArr = [];
+
+  years.forEach(year => {
+    const insurancePayout = insurancePayoutTotal(year);
+    const incomeTotal = INCOME_IDS.reduce((s, id) => s + getYearlyEffectiveValue(id, year), 0) + insurancePayout;
+    const eventCost = lifeEventCost(year);
+    const insurancePremium = insurancePremiumTotal(year);
+    const expCategoryTotal = expenseCategoryRows().reduce((s, r) => s + getYearlyEffectiveValue(r.id, year), 0);
+    const expTotal = expCategoryTotal + eventCost + insurancePremium;
+    const balance = incomeTotal - expTotal;
+
+    setComputedCell('expEvent', year, eventCost);
+    setComputedCell('expInsurance', year, insurancePremium);
+    setComputedCell('incomeInsurance', year, insurancePayout);
+    const evNameTd = document.querySelector(`#timelineBody td.event-name-cell[data-row-id="event"][data-year="${year}"]`);
+    if (evNameTd) evNameTd.textContent = lifeEventNames(year);
+
+    categoryStore.groups.forEach(group => {
+      const cats = categoryStore.categories.filter(c => c.groupId === group.id);
+      if (!cats.length) return;
+      const groupSum = cats.reduce((s, cat) => s + getYearlyEffectiveValue(`cat_${cat.id}`, year), 0);
+      setComputedCell(`catgrp_${group.id}`, year, groupSum);
+    });
+
+    let investTotal = 0;
+    let investAssetsTotal = 0;
+    data.investments.forEach(inv => {
+      const contribId = `inv_${inv.id}_contrib`;
+      const balanceId = `inv_${inv.id}_balance`;
+      const contrib = getYearlyEffectiveValue(contribId, year);
+      investTotal += contrib;
+      const newBalance = prevBalances[inv.id] * (1 + inv.rate / 100) + contrib;
+      prevBalances[inv.id] = newBalance;
+      investAssetsTotal += newBalance;
+      setComputedCell(balanceId, year, newBalance);
+    });
+
+    const cashAssets = prevCash + balance - investTotal;
+    const totalAssets = cashAssets + investAssetsTotal;
+
+    setComputedCell('incomeTotal', year, incomeTotal);
+    setComputedCell('expTotal', year, expTotal);
+    setComputedCell('balance', year, balance);
+    setComputedCell('investTotal', year, investTotal);
+    setComputedCell('cashAssets', year, cashAssets);
+    setComputedCell('investAssets', year, investAssetsTotal);
+    setComputedCell('totalAssets', year, totalAssets);
+
+    cashArr.push(cashAssets);
+    investArr.push(investAssetsTotal);
+    totalArr.push(totalAssets);
+
+    prevCash = cashAssets;
+  });
+
+  updateInputCells(years);
+  updateChart(years, cashArr, investArr, totalArr);
+  updateSummary(years, cashArr, investArr, totalArr);
+  recalcMonthlyTable();
+}
+
+function updateChart(years, cashArr, investArr, totalArr) {
+  const ctx = document.getElementById('assetChart').getContext('2d');
+  const labels = years.map(y => y + '年');
+  const datasets = [
+    {
+      label: '現金資産',
+      data: cashArr,
+      borderColor: '#4a90d9',
+      backgroundColor: 'rgba(74,144,217,0.1)',
+      tension: 0.2,
+      fill: true,
+    },
+    {
+      label: '投資資産合計',
+      data: investArr,
+      borderColor: '#4caf7d',
+      backgroundColor: 'rgba(76,175,125,0.1)',
+      tension: 0.2,
+      fill: true,
+    },
+    {
+      label: '総資産',
+      data: totalArr,
+      borderColor: '#333',
+      borderDash: [5,4],
+      backgroundColor: 'transparent',
+      tension: 0.2,
+      fill: false,
+    },
+  ];
+
+  if (chart) {
+    chart.data.labels = labels;
+    chart.data.datasets = datasets;
+    chart.update();
+  } else {
+    chart = new Chart(ctx, {
+      type: 'line',
+      data: { labels, datasets },
+      options: {
+        responsive: true,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          tooltip: {
+            callbacks: {
+              label: c => `${c.dataset.label}: ${Math.round(c.parsed.y).toLocaleString()}万円`
+            }
+          }
+        },
+        scales: {
+          y: { ticks: { callback: v => v.toLocaleString() + '万円' } }
+        }
+      }
+    });
+  }
+}
+
+function updateSummary(years, cashArr, investArr, totalArr) {
+  const last = totalArr[totalArr.length - 1];
+  const lastCash = cashArr[cashArr.length - 1];
+  const lastInvest = investArr[investArr.length - 1];
+  const negIndex = totalArr.findIndex(v => v < 0);
+  const summary = document.getElementById('summary');
+
+  let negLine;
+  if (negIndex === -1) {
+    negLine = `${data.startYear}〜${years[years.length-1]}年の間、総資産はマイナスになりません。`;
+  } else {
+    negLine = `<strong class="negative">${years[negIndex]}年</strong>に総資産がマイナスになる見込みです。`;
+  }
+
+  summary.innerHTML = `
+    ${years[years.length-1]}年時点の総資産：<strong>${Math.round(last).toLocaleString()} 万円</strong>
+    （現金資産 ${Math.round(lastCash).toLocaleString()} 万円 + 投資資産 ${Math.round(lastInvest).toLocaleString()} 万円）<br>
+    ${negLine}
+  `;
+}
+
+migrateData();
+initSettingsInputs();
+renderCategorySettings();
+renderInvestmentSettings();
+renderLifeEventSettings();
+renderInsuranceSettings();
+generateTable();
+generateMonthlyTable();
+
+// 他タブ(家計簿など)でカテゴリが変更されたら、ストアを再読込して再描画する。
+window.addEventListener('storage', e => {
+  if (e.key !== CATEGORY_STORAGE_KEY) return;
+  categoryStore = ensureCategoryStore();
+  ROWS = buildRows();
+  renderCategorySettings();
+  generateTable();
+  generateMonthlyTable();
+});
+</script>
+</body>
+</html>
