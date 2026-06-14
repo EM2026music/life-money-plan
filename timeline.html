@@ -185,13 +185,13 @@
   table.timeline th, table.timeline td {
     border-right: 1px solid var(--border);
     border-bottom: 1px solid var(--border);
-    padding: 15px 8px;
+    padding: 2px 8px;
     text-align: right;
   }
-  table.timeline thead th { border-top: 1px solid var(--border); padding: 7px 8px; }
+  table.timeline thead th { border-top: 1px solid var(--border); padding: 3px 8px; }
   table.timeline th:first-child, table.timeline td:first-child { border-left: 1px solid var(--border); }
-  /* 固定エリア(年齢・名前・イベント)は行を低く。下のスクロールする項目行は広いまま。 */
-  table.timeline tr.frozen-row td { padding: 4px 8px; }
+  /* 行の上下幅は限界まで詰める(固定エリアも項目も帯もすべてコンパクト) */
+  table.timeline tr.frozen-row td { padding: 2px 8px; }
   table.timeline th {
     position: sticky;
     top: 0;
@@ -205,7 +205,7 @@
     left: 0;
     background: #fff;
     text-align: left !important;
-    min-width: 150px;
+    min-width: 184px;
     z-index: 2;
     font-weight: 600;
   }
@@ -268,7 +268,7 @@
     background: var(--section-bg);
     font-weight: 700;
     text-align: left;
-    padding: 11px 8px;
+    padding: 3px 8px;
   }
   tr.sec-hidden { display: none; }
   .section-toggle-btn {
@@ -311,9 +311,15 @@
   input.event-input { width: 90px; text-align: left; }
   .age-cell { color: var(--text-light); }
   .age-cell .grade { color: var(--accent); font-size: 10px; margin-left: 4px; font-weight: 600; }
+  .birth-label {
+    font-size: 10px;
+    color: var(--text-light);
+    font-weight: 400;
+    margin-left: 8px;
+    margin-right: 2px;
+  }
   .birth-inline {
-    width: 52px;
-    margin-left: 6px;
+    width: 54px;
     font-size: 11px;
     padding: 1px 3px;
     border: 1px solid var(--border);
@@ -1833,10 +1839,14 @@ function generateTable() {
     } else if (row.type === 'age' && row.birth) {
       // 名前 + 生まれ年の直接入力(基本情報を開かなくてもここで変更できる)
       labelTd.appendChild(document.createTextNode(row.label));
+      const birthLabel = document.createElement('span');
+      birthLabel.className = 'birth-label';
+      birthLabel.textContent = '生まれ年';
+      labelTd.appendChild(birthLabel);
       const birthInput = document.createElement('input');
       birthInput.type = 'number';
       birthInput.className = 'birth-inline';
-      birthInput.placeholder = '生年';
+      birthInput.placeholder = '例:1988';
       birthInput.value = data.births[row.birth] ?? '';
       birthInput.addEventListener('change', e => {
         const v = e.target.value;
