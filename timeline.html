@@ -481,6 +481,19 @@
     white-space: nowrap;
     font-weight: 600;
   }
+  .event-cell-input {
+    width: 92px;
+    border: none;
+    background: transparent;
+    text-align: left;
+    font-size: 11px;
+    padding: 2px;
+    font-family: inherit;
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .event-cell-input::placeholder { color: var(--text-light); font-weight: 400; opacity: .6; }
+  .event-cell-input:focus { outline: 2px solid var(--accent); background: #fff; border-radius: 3px; }
 
   /* 簡易パスワードゲート */
   .auth-gate {
@@ -1875,8 +1888,16 @@ function generateTable() {
         td.dataset.year = year;
       } else if (row.type === 'eventname') {
         td.className = 'event-name-cell';
-        td.dataset.rowId = row.id;
-        td.dataset.year = year;
+        const evInput = document.createElement('input');
+        evInput.className = 'event-cell-input';
+        evInput.type = 'text';
+        evInput.dataset.rowId = row.id;
+        evInput.dataset.year = year;
+        evInput.value = lifeEventNames(year);
+        evInput.placeholder = '行事';
+        evInput.title = 'この年のライフイベント名を入力(金額は「ライフイベントの設定」で)';
+        evInput.addEventListener('change', onEventNameChange);
+        td.appendChild(evInput);
       } else {
         const input = document.createElement('input');
         input.className = row.type === 'text' ? 'cell-input event-input' : 'cell-input';
@@ -1955,6 +1976,27 @@ function onCellInput(e) {
   // 「編集した年からそれ以降ずっとこの値」になるようにする（後ろに古い値が残っていても確実に追従）。
   if (row.forwardFill) clearCellsAfter(rowId, year);
   saveData();
+  recalcAll();
+}
+
+// ライフイベント行のセルに直接イベント名を入力したとき。その年のイベントを作成/更新/削除する。
+// (金額は「ライフイベントの設定」で設定。グリッドからは名前のみ編集)
+function onEventNameChange(e) {
+  const year = parseInt(e.target.dataset.year);
+  const value = e.target.value.trim();
+  const events = data.lifeEvents.filter(ev => ev.year === year);
+  if (value) {
+    if (events.length) events[0].name = value;
+    else data.lifeEvents.push({ id: 'ev' + Date.now() + Math.floor(Math.random() * 10000), name: value, year, amount: 0 });
+  } else {
+    if (events.length === 1 && (events[0].amount || 0) === 0) {
+      data.lifeEvents = data.lifeEvents.filter(ev => ev !== events[0]);
+    } else if (events.length) {
+      events[0].name = '';
+    }
+  }
+  saveData();
+  renderLifeEventSettings();
   recalcAll();
 }
 
@@ -2271,8 +2313,8 @@ function recalcAll() {
     setComputedCell('expInsurance', year, insurancePremium);
     setComputedCell('incomePension', year, pension);
     setComputedCell('incomeInsurance', year, insurancePayout);
-    const evNameTd = document.querySelector(`#timelineBody td.event-name-cell[data-row-id="event"][data-year="${year}"]`);
-    if (evNameTd) evNameTd.textContent = lifeEventNames(year);
+    const evInput = document.querySelector(`#timelineBody input[data-row-id="event"][data-year="${year}"]`);
+    if (evInput && evInput !== document.activeElement) evInput.value = lifeEventNames(year);
 
     categoryStore.groups.forEach(group => {
       const cats = categoryStore.categories.filter(c => c.groupId === group.id);
