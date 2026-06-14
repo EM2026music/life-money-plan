@@ -56,6 +56,13 @@
     font-weight: 400;
   }
   .collapsible-body.collapsed-section { display: none; }
+  .settings-section-title {
+    font-size: 13px;
+    color: var(--text-light);
+    margin: 28px 0 6px;
+    font-weight: 600;
+    letter-spacing: .04em;
+  }
   .settings-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -364,7 +371,7 @@
 </div>
 <div class="page" style="display:none">
   <h1>人生キャッシュフロー</h1>
-  <p class="subtitle">年ごとの年齢・収入・支出・投資から、総資産の推移をシミュレーションします（単位：万円）</p>
+  <p class="subtitle">年ごとの年齢・収入・支出・投資から、総資産の推移をシミュレーションします（単位：円）</p>
   <nav><a href="index.html">投資シミュレーション</a><a href="timeline.html">人生キャッシュフロー</a><a href="kakeibo.html">家計簿</a></nav>
 
   <div class="card">
@@ -376,7 +383,7 @@
       <label>シミュレーション年数
         <input type="number" id="numYears">
       </label>
-      <label>現在の現金資産（万円）
+      <label>現在の現金資産（円）
         <input type="number" id="initialAssets">
       </label>
       <label>パパ 生年
@@ -392,33 +399,6 @@
         <input type="number" id="birthChild2">
       </label>
     </div>
-  </div>
-
-  <div class="card">
-    <h2 class="collapsible-header" id="categorySettingsHeader">分類の設定 <span class="section-toggle">▶</span></h2>
-    <div id="categorySettingsBody" class="collapsible-body collapsed-section">
-      <p class="empty-note">家計簿の「分類」とタイムラインの支出行は共通です。大項目ごとに分類をまとめたり、大項目を付けずに管理することもできます。ここでの変更は家計簿側にも反映されます。</p>
-      <div id="categoryGroupList"></div>
-      <button class="add-btn" id="addCategoryGroupBtn">+ 大項目を追加</button>
-    </div>
-  </div>
-
-  <div class="card">
-    <h2>投資資産の設定</h2>
-    <div id="investmentList"></div>
-    <button class="add-btn" id="addInvestmentBtn">+ 投資先を追加</button>
-  </div>
-
-  <div class="card">
-    <h2>ライフイベントの設定</h2>
-    <div id="lifeEventList"></div>
-    <button class="add-btn" id="addLifeEventBtn">+ イベントを追加</button>
-  </div>
-
-  <div class="card">
-    <h2>保険の設定</h2>
-    <div id="insuranceList"></div>
-    <button class="add-btn" id="addInsuranceBtn">+ 保険を追加</button>
   </div>
 
   <div class="card table-wrap">
@@ -451,8 +431,43 @@
     <div class="summary" id="summary"></div>
   </div>
 
+  <h2 class="settings-section-title">設定</h2>
+
+  <div class="card">
+    <h2 class="collapsible-header" data-collapse-target="categorySettingsBody">分類の設定 <span class="section-toggle">▶</span></h2>
+    <div id="categorySettingsBody" class="collapsible-body collapsed-section">
+      <p class="empty-note">家計簿の「分類」とタイムラインの支出行は共通です。大項目ごとに分類をまとめたり、大項目を付けずに管理することもできます。ここでの変更は家計簿側にも反映されます。</p>
+      <div id="categoryGroupList"></div>
+      <button class="add-btn" id="addCategoryGroupBtn">+ 大項目を追加</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 class="collapsible-header" data-collapse-target="investmentSettingsBody">投資資産の設定 <span class="section-toggle">▶</span></h2>
+    <div id="investmentSettingsBody" class="collapsible-body collapsed-section">
+      <div id="investmentList"></div>
+      <button class="add-btn" id="addInvestmentBtn">+ 投資先を追加</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 class="collapsible-header" data-collapse-target="lifeEventSettingsBody">ライフイベントの設定 <span class="section-toggle">▶</span></h2>
+    <div id="lifeEventSettingsBody" class="collapsible-body collapsed-section">
+      <div id="lifeEventList"></div>
+      <button class="add-btn" id="addLifeEventBtn">+ イベントを追加</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 class="collapsible-header" data-collapse-target="insuranceSettingsBody">保険の設定 <span class="section-toggle">▶</span></h2>
+    <div id="insuranceSettingsBody" class="collapsible-body collapsed-section">
+      <div id="insuranceList"></div>
+      <button class="add-btn" id="addInsuranceBtn">+ 保険を追加</button>
+    </div>
+  </div>
+
   <p class="note">
-    ※ 収入・支出は、編集した年から「それ以降ずっとその額」になります（編集した年より後ろは、いったんすべてその額に上書きされます）。薄い文字のセルは引き継がれた値です。途中で金額を変えたいときは、先に手前の年を入れてから、変わる年に新しい額を入力してください（例：2026年に30万 → 全年30万、続けて2031年に35万 → 2026〜2030年は30万・2031年以降は35万）。※手前の年を編集し直すと、その先の変化点も上書きされます。<br>
+    ※ 収入・支出は、編集した年から「それ以降ずっとその額」になります（編集した年より後ろは、いったんすべてその額に上書きされます）。薄い文字のセルは引き継がれた値です。途中で金額を変えたいときは、先に手前の年を入れてから、変わる年に新しい額を入力してください（例：2026年に3,000,000 → 全年300万円、続けて2031年に3,500,000 → 2026〜2030年は300万円・2031年以降は350万円）。※手前の年を編集し直すと、その先の変化点も上書きされます。<br>
     ※ 定年などで収入を止めたい年は、その年に「0」と入力すれば、それ以降ずっと0円として計算されます。<br>
     ※ 「投資資産の設定」で登録した投資先は年率%で複利計算され、投資額は現金資産から差し引かれた上で総資産（現金資産＋投資資産合計）に統合されます。<br>
     ※ 「ライフイベントの設定」で車購入・旅行・入学などを「名称・年・金額」で登録すると、その年の「イベント費」に自動加算され、支出合計・資産に反映されます（同じ年に複数登録すると合算され、タイムラインの「イベント」行に名称が並びます）。<br>
@@ -478,7 +493,7 @@ const EVENT_ROWS = [
 ];
 
 const INCOME_ROWS = [
-  { section: '収入（万円/年）' },
+  { section: '収入（円/年）' },
   { id: 'incomeDad',       label: 'パパ収入',   type: 'editable', default: 400, forwardFill: 'full' },
   { id: 'incomeMom',       label: 'ママ収入',   type: 'editable', default: 100, forwardFill: 'full' },
   { id: 'incomeOther',     label: 'その他収入', type: 'editable', default: 0,   forwardFill: 'full' },
@@ -493,7 +508,7 @@ const EXPENSE_SUMMARY_ROWS = [
 ];
 
 const ASSET_ROWS = [
-  { section: '資産（万円）' },
+  { section: '資産（円）' },
   { id: 'balance',      label: '年間収支',     type: 'computed' },
   { id: 'investTotal',  label: '投資合計',     type: 'computed' },
   { id: 'cashAssets',   label: '現金資産',     type: 'computed' },
@@ -747,7 +762,7 @@ function lifeEventNames(year) {
 
 function buildInvestmentRows() {
   if (!data.investments.length) return [];
-  const rows = [{ section: '投資資産（万円/年）' }];
+  const rows = [{ section: '投資資産（円/年）' }];
   data.investments.forEach(inv => {
     rows.push({ id: `inv_${inv.id}_contrib`, label: `${inv.name} 投資額`, type: 'editable', default: 0, forwardFill: 'full', invId: inv.id });
     rows.push({ id: `inv_${inv.id}_balance`, label: `${inv.name} 残高`, type: 'computed', invId: inv.id });
@@ -757,7 +772,7 @@ function buildInvestmentRows() {
 
 function buildInsuranceRows() {
   if (!data.insurances.length) return [];
-  const rows = [{ section: '保険（万円/年）' }];
+  const rows = [{ section: '保険（円/年）' }];
   data.insurances.forEach(ins => {
     rows.push({ id: `ins_${ins.id}_premium`, label: `${ins.name} 保険料`, type: 'editable', default: 0, forwardFill: 'full', insId: ins.id });
   });
@@ -791,7 +806,7 @@ function buildRows() {
     ...AGE_ROWS,
     ...EVENT_ROWS,
     ...INCOME_ROWS,
-    { section: '支出（万円/年）' },
+    { section: '支出（円/年）' },
     ...buildExpenseCategoryRows(),
     ...EXPENSE_SUMMARY_ROWS,
     ...buildInsuranceRows(),
@@ -882,6 +897,12 @@ function roundMoney(v) {
   return Math.round(v * 10) / 10;
 }
 
+// 内部データは万円で保持するが、画面の表示・入力はすべて円で扱う。
+// toYen: 万円→円(整数), fromYen: 円→万円, formatYen: 円のカンマ区切り文字列。
+function toYen(man) { return Math.round((man || 0) * 10000); }
+function fromYen(yen) { return (yen || 0) / 10000; }
+function formatYen(man) { return toYen(man).toLocaleString(); }
+
 function getYears() {
   return Array.from({ length: data.numYears }, (_, i) => data.startYear + i);
 }
@@ -889,7 +910,7 @@ function getYears() {
 function initSettingsInputs() {
   document.getElementById('startYear').value = data.startYear;
   document.getElementById('numYears').value = data.numYears;
-  document.getElementById('initialAssets').value = data.initialAssets;
+  document.getElementById('initialAssets').value = toYen(data.initialAssets);
   BIRTH_IDS.forEach(id => {
     document.getElementById(id).value = data.births[id] ?? '';
   });
@@ -907,7 +928,7 @@ function initSettingsInputs() {
     generateMonthlyTable();
   });
   document.getElementById('initialAssets').addEventListener('input', e => {
-    data.initialAssets = parseFloat(e.target.value) || 0;
+    data.initialAssets = fromYen(parseFloat(e.target.value) || 0);
     saveData();
     recalcAll();
   });
@@ -1081,11 +1102,13 @@ document.getElementById('addCategoryGroupBtn').addEventListener('click', () => {
   renderCategorySettings();
 });
 
-// 「分類の設定」カード全体の開閉。
-document.getElementById('categorySettingsHeader').addEventListener('click', () => {
-  const body = document.getElementById('categorySettingsBody');
-  const collapsed = body.classList.toggle('collapsed-section');
-  document.querySelector('#categorySettingsHeader .section-toggle').textContent = collapsed ? '▶' : '▼';
+// 折りたたみ式カード(分類/投資/イベント/保険の設定)の開閉。data-collapse-target で本文を指定。
+document.querySelectorAll('.collapsible-header[data-collapse-target]').forEach(header => {
+  header.addEventListener('click', () => {
+    const body = document.getElementById(header.dataset.collapseTarget);
+    const collapsed = body.classList.toggle('collapsed-section');
+    header.querySelector('.section-toggle').textContent = collapsed ? '▶' : '▼';
+  });
 });
 
 function renderInvestmentSettings() {
@@ -1105,7 +1128,7 @@ function renderInvestmentSettings() {
     row.innerHTML = `
       <input type="text" class="inv-name" value="${inv.name}" data-id="${inv.id}">
       <label>年率%<input type="number" class="inv-rate" value="${inv.rate}" step="0.1" data-id="${inv.id}"></label>
-      <label>初期残高(万円)<input type="number" class="inv-balance" value="${inv.initialBalance}" data-id="${inv.id}"></label>
+      <label>初期残高(円)<input type="number" class="inv-balance" value="${toYen(inv.initialBalance)}" data-id="${inv.id}"></label>
       <button class="del-investment-btn" data-id="${inv.id}">削除</button>
     `;
     container.appendChild(row);
@@ -1133,7 +1156,7 @@ function renderInvestmentSettings() {
   container.querySelectorAll('.inv-balance').forEach(el => {
     el.addEventListener('input', e => {
       const inv = data.investments.find(i => i.id === e.target.dataset.id);
-      inv.initialBalance = parseFloat(e.target.value) || 0;
+      inv.initialBalance = fromYen(parseFloat(e.target.value) || 0);
       saveData();
       recalcAll();
     });
@@ -1184,7 +1207,7 @@ function renderLifeEventSettings() {
     row.innerHTML = `
       <input type="text" class="inv-name ev-field" value="${ev.name}" data-id="${ev.id}" data-field="name">
       <label>年<input type="number" class="ev-field" value="${ev.year}" data-id="${ev.id}" data-field="year"></label>
-      <label>金額(万円)<input type="number" class="ev-field" value="${ev.amount}" data-id="${ev.id}" data-field="amount"></label>
+      <label>金額(円)<input type="number" class="ev-field" value="${toYen(ev.amount)}" data-id="${ev.id}" data-field="amount"></label>
       <button class="del-investment-btn ev-del" data-id="${ev.id}">削除</button>
     `;
     container.appendChild(row);
@@ -1197,7 +1220,7 @@ function renderLifeEventSettings() {
       const field = e.target.dataset.field;
       if (field === 'name') ev.name = e.target.value;
       else if (field === 'year') ev.year = parseInt(e.target.value) || data.startYear;
-      else if (field === 'amount') ev.amount = parseFloat(e.target.value) || 0;
+      else if (field === 'amount') ev.amount = fromYen(parseFloat(e.target.value) || 0);
       saveData();
       recalcAll();
     });
@@ -1237,7 +1260,7 @@ function renderInsuranceSettings() {
     row.innerHTML = `
       <input type="text" class="inv-name ins-field" value="${ins.name}" data-id="${ins.id}" data-field="name">
       <label>受取年(なければ空欄)<input type="number" class="ins-field" value="${ins.payoutYear ?? ''}" data-id="${ins.id}" data-field="payoutYear"></label>
-      <label>受取額(万円)<input type="number" class="ins-field" value="${ins.payoutAmount}" data-id="${ins.id}" data-field="payoutAmount"></label>
+      <label>受取額(円)<input type="number" class="ins-field" value="${toYen(ins.payoutAmount)}" data-id="${ins.id}" data-field="payoutAmount"></label>
       <button class="del-investment-btn ins-del" data-id="${ins.id}">削除</button>
     `;
     container.appendChild(row);
@@ -1258,7 +1281,7 @@ function renderInsuranceSettings() {
       } else if (field === 'payoutYear') {
         ins.payoutYear = e.target.value === '' ? null : (parseInt(e.target.value) || null);
       } else if (field === 'payoutAmount') {
-        ins.payoutAmount = parseFloat(e.target.value) || 0;
+        ins.payoutAmount = fromYen(parseFloat(e.target.value) || 0);
       }
       saveData();
       recalcAll();
@@ -1382,10 +1405,12 @@ function generateTable() {
         input.dataset.rowId = row.id;
         input.dataset.year = year;
         if (row.type === 'editable') {
-          input.value = getYearlyEffectiveValue(row.id, year);
+          input.value = toYen(getYearlyEffectiveValue(row.id, year));
           input.classList.toggle('inherited', isInherited(row.id, year));
-        } else {
+        } else if (row.type === 'text') {
           input.value = getCellValue(row.id, year);
+        } else {
+          input.value = toYen(getCellValue(row.id, year));
         }
         input.addEventListener('input', onCellInput);
         if (input.type === 'number') {
@@ -1410,7 +1435,7 @@ function onCellInput(e) {
   const rowId = e.target.dataset.rowId;
   const year = parseInt(e.target.dataset.year);
   const row = ROWS.find(r => r.id === rowId);
-  const value = row.type === 'text' ? e.target.value : (parseFloat(e.target.value) || 0);
+  const value = row.type === 'text' ? e.target.value : fromYen(parseFloat(e.target.value) || 0);
   setCellValue(rowId, year, value);
   // フォワードフィル対象の行は、編集した年より後ろの明示値・月別上書きをすべてクリアし、
   // 「編集した年からそれ以降ずっとこの値」になるようにする（後ろに古い値が残っていても確実に追従）。
@@ -1422,7 +1447,7 @@ function onCellInput(e) {
 function setComputedCell(rowId, year, value) {
   const td = document.querySelector(`#timelineBody td.computed-cell[data-row-id="${rowId}"][data-year="${year}"]`);
   if (!td) return;
-  td.textContent = Math.round(value).toLocaleString();
+  td.textContent = formatYen(value);
   td.classList.toggle('negative', value < 0);
 }
 
@@ -1432,7 +1457,7 @@ function updateInputCells(years) {
     years.forEach(year => {
       const input = document.querySelector(`#timelineBody input[data-row-id="${row.id}"][data-year="${year}"]`);
       if (!input || input === document.activeElement) return;
-      input.value = getYearlyEffectiveValue(row.id, year);
+      input.value = toYen(getYearlyEffectiveValue(row.id, year));
       input.classList.toggle('inherited', isInherited(row.id, year));
     });
   });
@@ -1455,8 +1480,13 @@ function initMonthlyYearSelect() {
   };
 }
 
+// 月次プランナーに表示する行。編集可能な行(forwardFillあり)に加え、
+// 支出の大項目の集計・開閉行(catgrp_*)も年次と同じ並びで含める。
 function getMonthlyRows() {
-  return ROWS.filter(r => r.type === 'editable' && r.forwardFill !== undefined);
+  return ROWS.filter(r =>
+    (r.type === 'editable' && r.forwardFill !== undefined) ||
+    (r.id && r.id.startsWith('catgrp_'))
+  );
 }
 
 const MONTHLY_TOTAL_LABELS = {
@@ -1480,6 +1510,33 @@ function generateMonthlyTable() {
   getMonthlyRows().forEach(row => {
     const tr = document.createElement('tr');
     tr.dataset.rowId = row.id;
+
+    if (row.id.startsWith('catgrp_')) {
+      tr.className = 'computed-row';
+      const collapsed = collapsedExpenseGroups.has(row.groupId);
+      const labelTd = document.createElement('td');
+      labelTd.className = 'row-label';
+      labelTd.innerHTML = `<button type="button" class="row-group-toggle" data-group-id="${row.groupId}">${collapsed ? '▶' : '▼'}</button>${row.label}`;
+      tr.appendChild(labelTd);
+
+      const baseTd = document.createElement('td');
+      baseTd.className = 'computed-cell base-cell';
+      baseTd.dataset.rowId = row.id;
+      baseTd.dataset.month = 'base';
+      tr.appendChild(baseTd);
+
+      for (let m = 1; m <= 12; m++) {
+        const td = document.createElement('td');
+        td.className = 'computed-cell';
+        td.dataset.rowId = row.id;
+        td.dataset.month = m;
+        tr.appendChild(td);
+      }
+
+      body.appendChild(tr);
+      return;
+    }
+
     if (row.catId !== undefined && row.groupId) {
       tr.dataset.parentGroup = row.groupId;
       if (collapsedExpenseGroups.has(row.groupId)) tr.style.display = 'none';
@@ -1497,7 +1554,7 @@ function generateMonthlyTable() {
     baseInput.className = 'cell-input base-input';
     baseInput.type = 'number';
     baseInput.dataset.rowId = row.id;
-    baseInput.value = roundMoney(getCellValue(row.id, year) / 12);
+    baseInput.value = toYen(getCellValue(row.id, year) / 12);
     baseInput.classList.toggle('inherited', isInherited(row.id, year));
     baseInput.addEventListener('input', onBaseCellInput);
     baseInput.addEventListener('wheel', () => baseInput.blur());
@@ -1511,7 +1568,7 @@ function generateMonthlyTable() {
       input.type = 'number';
       input.dataset.rowId = row.id;
       input.dataset.month = m;
-      input.value = roundMoney(getMonthlyEffectiveValue(row.id, year, m));
+      input.value = toYen(getMonthlyEffectiveValue(row.id, year, m));
       input.classList.toggle('inherited', getMonthlyOverride(row.id, year, m) === undefined);
       input.addEventListener('input', onMonthlyCellInput);
       input.addEventListener('wheel', () => input.blur());
@@ -1543,13 +1600,17 @@ function generateMonthlyTable() {
     body.appendChild(tr);
   });
 
+  body.querySelectorAll('.row-group-toggle').forEach(btn => {
+    btn.addEventListener('click', () => toggleExpenseGroup(btn.dataset.groupId));
+  });
+
   recalcMonthlyTable();
 }
 
 function onBaseCellInput(e) {
   const rowId = e.target.dataset.rowId;
   const year = data.monthlySelectedYear;
-  const monthly = parseFloat(e.target.value) || 0;
+  const monthly = fromYen(parseFloat(e.target.value) || 0);
   // 基準額は月額入力。年間ベース値は月額×12として保存し、その年の月別上書きをリセット。
   setCellValue(rowId, year, monthly * 12);
   saveData();
@@ -1560,7 +1621,7 @@ function onMonthlyCellInput(e) {
   const rowId = e.target.dataset.rowId;
   const month = parseInt(e.target.dataset.month);
   const year = data.monthlySelectedYear;
-  const value = parseFloat(e.target.value) || 0;
+  const value = fromYen(parseFloat(e.target.value) || 0);
   setMonthlyOverride(rowId, year, month, value);
   e.target.classList.remove('inherited');
   saveData();
@@ -1577,7 +1638,7 @@ function resetMonthlyRow(rowId) {
 function setMonthlyComputedCell(rowId, month, value) {
   const td = document.querySelector(`#monthlyBody td.computed-cell[data-row-id="${rowId}"][data-month="${month}"]`);
   if (!td) return;
-  td.textContent = roundMoney(value).toLocaleString();
+  td.textContent = formatYen(value);
   td.classList.toggle('negative', value < 0);
 }
 
@@ -1587,23 +1648,43 @@ function recalcMonthlyTable() {
 
   const monthIncomeTotals = Array(13).fill(0);
   const monthExpenseTotals = Array(13).fill(0);
+  const groupBaseTotals = {};
+  const groupMonthTotals = {};
 
   getMonthlyRows().forEach(row => {
+    if (row.id.startsWith('catgrp_')) return;
+
     const baseInput = document.querySelector(`#monthlyBody input.base-input[data-row-id="${row.id}"]`);
     if (baseInput && baseInput !== document.activeElement) {
-      baseInput.value = roundMoney(getCellValue(row.id, year) / 12);
+      baseInput.value = toYen(getCellValue(row.id, year) / 12);
       baseInput.classList.toggle('inherited', isInherited(row.id, year));
+    }
+
+    if (row.catId !== undefined && row.groupId) {
+      if (groupBaseTotals[row.groupId] === undefined) {
+        groupBaseTotals[row.groupId] = 0;
+        groupMonthTotals[row.groupId] = Array(13).fill(0);
+      }
+      groupBaseTotals[row.groupId] += getCellValue(row.id, year) / 12;
     }
 
     for (let m = 1; m <= 12; m++) {
       const val = getMonthlyEffectiveValue(row.id, year, m);
       const input = document.querySelector(`#monthlyBody input[data-row-id="${row.id}"][data-month="${m}"]`);
       if (input && input !== document.activeElement) {
-        input.value = roundMoney(val);
+        input.value = toYen(val);
         input.classList.toggle('inherited', getMonthlyOverride(row.id, year, m) === undefined);
       }
       if (INCOME_IDS.includes(row.id)) monthIncomeTotals[m] += val;
       if (row.catId !== undefined || row.insId !== undefined) monthExpenseTotals[m] += val;
+      if (row.catId !== undefined && row.groupId) groupMonthTotals[row.groupId][m] += val;
+    }
+  });
+
+  Object.keys(groupBaseTotals).forEach(groupId => {
+    setMonthlyComputedCell(`catgrp_${groupId}`, 'base', groupBaseTotals[groupId]);
+    for (let m = 1; m <= 12; m++) {
+      setMonthlyComputedCell(`catgrp_${groupId}`, m, groupMonthTotals[groupId][m]);
     }
   });
 
@@ -1698,10 +1779,14 @@ function recalcAll() {
 function updateChart(years, cashArr, investArr, totalArr) {
   const ctx = document.getElementById('assetChart').getContext('2d');
   const labels = years.map(y => y + '年');
+  // チャートも円表示。内部配列は万円なので円に変換して描画する。
+  const cashYen = cashArr.map(toYen);
+  const investYen = investArr.map(toYen);
+  const totalYen = totalArr.map(toYen);
   const datasets = [
     {
       label: '現金資産',
-      data: cashArr,
+      data: cashYen,
       borderColor: '#4a90d9',
       backgroundColor: 'rgba(74,144,217,0.1)',
       tension: 0.2,
@@ -1709,7 +1794,7 @@ function updateChart(years, cashArr, investArr, totalArr) {
     },
     {
       label: '投資資産合計',
-      data: investArr,
+      data: investYen,
       borderColor: '#4caf7d',
       backgroundColor: 'rgba(76,175,125,0.1)',
       tension: 0.2,
@@ -1717,7 +1802,7 @@ function updateChart(years, cashArr, investArr, totalArr) {
     },
     {
       label: '総資産',
-      data: totalArr,
+      data: totalYen,
       borderColor: '#333',
       borderDash: [5,4],
       backgroundColor: 'transparent',
@@ -1740,12 +1825,12 @@ function updateChart(years, cashArr, investArr, totalArr) {
         plugins: {
           tooltip: {
             callbacks: {
-              label: c => `${c.dataset.label}: ${Math.round(c.parsed.y).toLocaleString()}万円`
+              label: c => `${c.dataset.label}: ${Math.round(c.parsed.y).toLocaleString()}円`
             }
           }
         },
         scales: {
-          y: { ticks: { callback: v => v.toLocaleString() + '万円' } }
+          y: { ticks: { callback: v => v.toLocaleString() + '円' } }
         }
       }
     });
@@ -1767,8 +1852,8 @@ function updateSummary(years, cashArr, investArr, totalArr) {
   }
 
   summary.innerHTML = `
-    ${years[years.length-1]}年時点の総資産：<strong>${Math.round(last).toLocaleString()} 万円</strong>
-    （現金資産 ${Math.round(lastCash).toLocaleString()} 万円 + 投資資産 ${Math.round(lastInvest).toLocaleString()} 万円）<br>
+    ${years[years.length-1]}年時点の総資産：<strong>${formatYen(last)} 円</strong>
+    （現金資産 ${formatYen(lastCash)} 円 + 投資資産 ${formatYen(lastInvest)} 円）<br>
     ${negLine}
   `;
 }
