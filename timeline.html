@@ -1665,10 +1665,9 @@ function generateMonthlyTable() {
 
     if (row.id.startsWith('catgrp_')) {
       tr.className = 'computed-row';
-      const collapsed = collapsedExpenseGroups.has(row.groupId);
       const labelTd = document.createElement('td');
       labelTd.className = 'row-label';
-      labelTd.innerHTML = `<button type="button" class="row-group-toggle" data-group-id="${row.groupId}">${collapsed ? '▶' : '▼'}</button>${row.label}`;
+      buildEditableCategoryLabel(labelTd, row);
       tr.appendChild(labelTd);
 
       const baseTd = document.createElement('td');
@@ -1696,8 +1695,18 @@ function generateMonthlyTable() {
 
     const labelTd = document.createElement('td');
     labelTd.className = 'row-label';
-    labelTd.innerHTML = `${row.label}<button class="copy-btn" title="この年の月別の上書きをリセット">リセット</button>`;
-    labelTd.querySelector('button').addEventListener('click', () => resetMonthlyRow(row.id));
+    if (row.catId !== undefined) {
+      // 支出の分類行: 年次と同じく名前をその場で編集・削除できる + リセット
+      buildEditableCategoryLabel(labelTd, row);
+    } else {
+      labelTd.appendChild(document.createTextNode(row.label));
+    }
+    const resetBtn = document.createElement('button');
+    resetBtn.className = 'copy-btn';
+    resetBtn.title = 'この年の月別の上書きをリセット';
+    resetBtn.textContent = 'リセット';
+    resetBtn.addEventListener('click', () => resetMonthlyRow(row.id));
+    labelTd.appendChild(resetBtn);
     tr.appendChild(labelTd);
 
     const baseTd = document.createElement('td');
