@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
 <title>人生キャッシュフロー - ライフマネープラン</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="chart.umd.min.js"></script>
 <style>
   :root {
     --bg: #eef7fb;
@@ -39,9 +39,70 @@
     display: inline-block;
   }
   .subtitle { color: var(--text-light); font-size: 14px; margin: 0 0 12px; }
-  nav { font-size: 13px; margin-bottom: 16px; }
-  nav a { color: var(--accent); text-decoration: none; margin-right: 12px; }
-  nav a:hover { text-decoration: underline; }
+  /* 左サイドバー(常時表示ナビ) */
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 200px;
+    height: 100vh;
+    background: var(--card-bg);
+    border-right: 3px solid var(--accent);
+    box-shadow: 2px 0 10px rgba(56,182,211,0.10);
+    padding: 22px 0;
+    z-index: 100;
+    overflow-y: auto;
+  }
+  .sidebar-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--accent);
+    padding: 0 20px 16px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 10px;
+  }
+  .sidebar a {
+    display: block;
+    padding: 14px 20px;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+    text-decoration: none;
+    border-left: 3px solid transparent;
+    transition: background .12s;
+  }
+  .sidebar a:hover { background: var(--section-bg); }
+  .sidebar a.active {
+    color: var(--accent);
+    background: var(--section-bg);
+    border-left-color: var(--accent);
+  }
+  .sidebar a.sidebar-sub {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-light);
+    margin-top: 14px;
+  }
+  body { padding-left: 224px; }
+  @media (max-width: 768px) {
+    .sidebar {
+      position: static;
+      width: auto;
+      height: auto;
+      border-right: none;
+      border-bottom: 3px solid var(--accent);
+      box-shadow: none;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 2px;
+      padding: 8px;
+      margin-bottom: 12px;
+    }
+    .sidebar-title { display: none; }
+    .sidebar a { padding: 8px 12px; font-size: 14px; border-left: none; border-radius: 6px; }
+    .sidebar a.sidebar-sub { margin-top: 0; }
+    body { padding-left: 16px; padding-right: 16px; }
+  }
   .card {
     background: var(--card-bg);
     border: 1px solid var(--border);
@@ -99,7 +160,6 @@
     font-family: inherit;
   }
   .table-wrap {
-    overflow-x: auto;
     padding: 0;
   }
   .table-wrap > h2 {
@@ -110,21 +170,30 @@
     padding: 0 20px 12px;
     max-width: 240px;
   }
+  /* 表のスクロール領域。ここを縦横スクロールしても見出し・項目名が固定される(Excelのウィンドウ枠固定) */
+  .grid-scroll {
+    overflow: auto;
+    max-height: 72vh;
+  }
   table.timeline {
-    border-collapse: collapse;
+    border-collapse: separate;
+    border-spacing: 0;
     font-size: 12px;
     white-space: nowrap;
   }
   table.timeline th, table.timeline td {
-    border: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
     padding: 4px 6px;
     text-align: right;
   }
+  table.timeline thead th { border-top: 1px solid var(--border); }
+  table.timeline th:first-child, table.timeline td:first-child { border-left: 1px solid var(--border); }
   table.timeline th {
     position: sticky;
     top: 0;
     background: #fff;
-    z-index: 3;
+    z-index: 5;
     font-weight: 600;
     border-bottom: 2px solid var(--accent-line);
   }
@@ -133,11 +202,19 @@
     left: 0;
     background: #fff;
     text-align: left !important;
-    min-width: 132px;
+    min-width: 150px;
     z-index: 2;
     font-weight: 600;
   }
-  th.row-label { z-index: 4; }
+  th.row-label { z-index: 6; }
+  /* 年次タイムラインで上部に固定する行(年齢・イベント)。top位置はJSで設定 */
+  tr.frozen-row td {
+    position: sticky;
+    background: #fff;
+    z-index: 3;
+  }
+  tr.frozen-row td.row-label { z-index: 4; }
+  tr.frozen-row.frozen-row-last td { border-bottom: 2px solid var(--accent-line); }
   .row-group-toggle {
     background: none;
     border: none;
@@ -420,9 +497,15 @@
   </div>
 </div>
 <div class="page" style="display:none">
+  <nav class="sidebar">
+    <div class="sidebar-title">ライフマネープラン</div>
+    <a href="kakeibo.html">家計簿</a>
+    <a href="timeline.html#monthly" class="active">月次キャッシュフロー</a>
+    <a href="timeline.html#yearly" class="active">年次タイムライン</a>
+    <a href="index.html" class="sidebar-sub">投資シミュレーション</a>
+  </nav>
   <h1>人生キャッシュフロー</h1>
   <p class="subtitle">年ごとの年齢・収入・支出・投資から、総資産の推移をシミュレーションします（単位：円）</p>
-  <nav><a href="index.html">投資シミュレーション</a><a href="timeline.html">人生キャッシュフロー</a><a href="kakeibo.html">家計簿</a></nav>
 
   <div class="card">
     <h2>基本情報</h2>
@@ -451,29 +534,33 @@
     </div>
   </div>
 
-  <div class="card table-wrap">
-    <h2>月次プランナー</h2>
+  <div class="card table-wrap" id="monthly">
+    <h2>月次キャッシュフロー</h2>
     <div class="settings-grid">
       <label>対象年
         <select id="monthlyYearSelect"></select>
       </label>
     </div>
-    <table class="timeline">
-      <thead>
-        <tr id="monthHeaderRow"><th class="row-label">項目</th></tr>
-      </thead>
-      <tbody id="monthlyBody"></tbody>
-    </table>
+    <div class="grid-scroll">
+      <table class="timeline">
+        <thead>
+          <tr id="monthHeaderRow"><th class="row-label">項目</th></tr>
+        </thead>
+        <tbody id="monthlyBody"></tbody>
+      </table>
+    </div>
   </div>
 
-  <div class="card table-wrap">
+  <div class="card table-wrap" id="yearly">
     <h2>年次タイムライン</h2>
-    <table class="timeline">
-      <thead>
-        <tr id="yearHeaderRow"><th class="row-label">項目</th></tr>
-      </thead>
-      <tbody id="timelineBody"></tbody>
-    </table>
+    <div class="grid-scroll">
+      <table class="timeline">
+        <thead>
+          <tr id="yearHeaderRow"><th class="row-label">項目</th></tr>
+        </thead>
+        <tbody id="timelineBody"></tbody>
+      </table>
+    </div>
   </div>
 
   <div class="card chart-card">
@@ -517,6 +604,22 @@
     </div>
   </div>
 
+  <div class="card">
+    <h2 class="collapsible-header" data-collapse-target="pensionSettingsBody">年金の設定 <span class="section-toggle">▶</span></h2>
+    <div id="pensionSettingsBody" class="collapsible-body collapsed-section">
+      <p class="empty-note">受給開始年齢になった年から、年額が「年金」(収入)に自動加算されます。年齢は「基本情報」の生年から計算されます。年額が0の人は無効です。</p>
+      <div id="pensionList"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 class="collapsible-header" data-collapse-target="resetSettingsBody">初期化 <span class="section-toggle">▶</span></h2>
+    <div id="resetSettingsBody" class="collapsible-body collapsed-section">
+      <p class="empty-note">分類(大項目・項目)を初期状態に戻します。<strong>入力した金額データは消えません</strong>(各項目に入れた金額はそのまま保持されます)。分類をいじりすぎて元に戻したいときに使ってください。</p>
+      <button class="del-investment-btn" id="resetCategoriesBtn">分類を初期状態に戻す</button>
+    </div>
+  </div>
+
   <p class="note">
     ※ 収入・支出は、編集した年から「それ以降ずっとその額」になります（編集した年より後ろは、いったんすべてその額に上書きされます）。薄い文字のセルは引き継がれた値です。途中で金額を変えたいときは、先に手前の年を入れてから、変わる年に新しい額を入力してください（例：2026年に3,000,000 → 全年300万円、続けて2031年に3,500,000 → 2026〜2030年は300万円・2031年以降は350万円）。※手前の年を編集し直すと、その先の変化点も上書きされます。<br>
     ※ 定年などで収入を止めたい年は、その年に「0」と入力すれば、それ以降ずっと0円として計算されます。<br>
@@ -548,6 +651,7 @@ const INCOME_ROWS = [
   { id: 'incomeDad',       label: 'パパ収入',   type: 'editable', default: 400, forwardFill: 'full' },
   { id: 'incomeMom',       label: 'ママ収入',   type: 'editable', default: 100, forwardFill: 'full' },
   { id: 'incomeOther',     label: 'その他収入', type: 'editable', default: 0,   forwardFill: 'full' },
+  { id: 'incomePension',   label: '年金',       type: 'computed' },
   { id: 'incomeInsurance', label: '保険受取',   type: 'computed' },
   { id: 'incomeTotal',     label: '収入合計',   type: 'computed' },
 ];
@@ -584,6 +688,7 @@ function defaultData() {
     lifeEvents: [],
     insurances: [],
     monthlyCells: {},
+    pension: { dad: { startAge: 65, amount: 0 }, mom: { startAge: 65, amount: 0 } },
   };
 }
 
@@ -595,6 +700,9 @@ function loadData() {
       if (!saved.lifeEvents) saved.lifeEvents = [];
       if (!saved.insurances) saved.insurances = [];
       if (!saved.monthlyCells) saved.monthlyCells = {};
+      if (!saved.pension) saved.pension = { dad: { startAge: 65, amount: 0 }, mom: { startAge: 65, amount: 0 } };
+      if (!saved.pension.dad) saved.pension.dad = { startAge: 65, amount: 0 };
+      if (!saved.pension.mom) saved.pension.mom = { startAge: 65, amount: 0 };
       return saved;
     }
   } catch (e) {}
@@ -799,6 +907,20 @@ function insurancePremiumTotal(year) {
 // その年の保険受取（学資保険など）合計（万円）。
 function insurancePayoutTotal(year) {
   return data.insurances.reduce((s, ins) => s + (ins.payoutYear === year ? (ins.payoutAmount || 0) : 0), 0);
+}
+
+// その年の年金合計（万円）。パパ・ママそれぞれ、生年から計算した年齢が受給開始年齢以上なら年額を加算。
+function pensionForYear(year) {
+  const p = data.pension || {};
+  let total = 0;
+  [['dad', 'birthDad'], ['mom', 'birthMom']].forEach(([key, birthKey]) => {
+    const cfg = p[key];
+    const birth = data.births[birthKey];
+    if (cfg && birth && (cfg.amount || 0) > 0 && (year - birth) >= cfg.startAge) {
+      total += cfg.amount;
+    }
+  });
+  return total;
 }
 
 // その年のライフイベント費の合計（万円）。
@@ -1364,6 +1486,58 @@ document.getElementById('addInsuranceBtn').addEventListener('click', () => {
   generateMonthlyTable();
 });
 
+// --- 年金の設定 ---
+function renderPensionSettings() {
+  const container = document.getElementById('pensionList');
+  if (!container) return;
+  container.innerHTML = '';
+  const people = [
+    { key: 'dad', label: 'パパ', birthKey: 'birthDad' },
+    { key: 'mom', label: 'ママ', birthKey: 'birthMom' },
+  ];
+  people.forEach(person => {
+    const cfg = data.pension[person.key];
+    const birth = data.births[person.birthKey];
+    const startYear = birth ? (birth + cfg.startAge) : null;
+    const row = document.createElement('div');
+    row.className = 'investment-row';
+    row.innerHTML = `
+      <span class="inv-name" style="border:none;background:none;font-weight:700;">${person.label}</span>
+      <label>受給開始年齢<input type="number" class="pension-field" value="${cfg.startAge}" data-person="${person.key}" data-field="startAge"></label>
+      <label>年額(円)<input type="number" class="pension-field" value="${toYen(cfg.amount)}" data-person="${person.key}" data-field="amount"></label>
+      <span class="empty-note" style="margin:0;">${startYear ? `${startYear}年〜` : '生年未設定'}</span>
+    `;
+    container.appendChild(row);
+  });
+
+  container.querySelectorAll('.pension-field').forEach(el => {
+    el.addEventListener('input', e => {
+      const cfg = data.pension[e.target.dataset.person];
+      const field = e.target.dataset.field;
+      if (field === 'startAge') cfg.startAge = parseInt(e.target.value) || 0;
+      else if (field === 'amount') cfg.amount = fromYen(parseFloat(e.target.value) || 0);
+      saveData();
+      renderPensionSettings();
+      recalcAll();
+    });
+    if (el.type === 'number') el.addEventListener('wheel', () => el.blur());
+  });
+}
+
+// --- 分類を初期状態に戻す(金額データは保持) ---
+document.getElementById('resetCategoriesBtn').addEventListener('click', () => {
+  if (!confirm('分類(大項目・項目)を初期状態に戻します。\n入力した金額データは消えません。よろしいですか?')) return;
+  categoryStore = defaultCategoryStore();
+  saveCategoryStore(categoryStore);
+  collapsedCategoryGroups = null;
+  collapsedExpenseGroups = null;
+  ROWS = buildRows();
+  renderCategorySettings();
+  generateTable();
+  generateMonthlyTable();
+  alert('分類を初期状態に戻しました。金額データは保持されています。');
+});
+
 // --- annual timeline table ---
 
 // 支出の大項目ごとの折りたたみ状態(年次・月次グリッド共通)。大項目IDのSet。デフォルトは全て折りたたみ。
@@ -1580,8 +1754,41 @@ function generateTable() {
     btn.addEventListener('click', () => toggleExpenseGroup(btn.dataset.groupId));
   });
 
+  applyYearlyFreeze();
   recalcAll();
 }
+
+// 年次タイムラインの上部(年ヘッダー+年齢+イベント行)を、表内スクロールしても固定表示する。
+// 各固定行のtop位置を、ヘッダー高さからの累積で設定する(Excelのウィンドウ枠固定相当)。
+function applyYearlyFreeze() {
+  const scroll = document.querySelector('#yearly .grid-scroll');
+  if (!scroll) return;
+  const thead = scroll.querySelector('thead');
+  const headH = thead ? thead.getBoundingClientRect().height : 0;
+  const bodyRows = Array.from(scroll.querySelectorAll('tbody tr'));
+  const freezeCount = AGE_ROWS.length + EVENT_ROWS.length;
+
+  bodyRows.forEach(tr => {
+    tr.classList.remove('frozen-row', 'frozen-row-last');
+    tr.querySelectorAll('td').forEach(td => { td.style.top = ''; });
+  });
+
+  let offset = headH;
+  for (let i = 0; i < freezeCount && i < bodyRows.length; i++) {
+    const tr = bodyRows[i];
+    tr.classList.add('frozen-row');
+    const top = offset;
+    tr.querySelectorAll('td').forEach(td => { td.style.top = top + 'px'; });
+    if (i === freezeCount - 1) tr.classList.add('frozen-row-last');
+    offset += tr.getBoundingClientRect().height;
+  }
+}
+
+let __freezeResizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(__freezeResizeTimer);
+  __freezeResizeTimer = setTimeout(applyYearlyFreeze, 150);
+});
 
 function onCellInput(e) {
   const rowId = e.target.dataset.rowId;
@@ -1880,7 +2087,8 @@ function recalcAll() {
 
   years.forEach(year => {
     const insurancePayout = insurancePayoutTotal(year);
-    const incomeTotal = INCOME_IDS.reduce((s, id) => s + getYearlyEffectiveValue(id, year), 0) + insurancePayout;
+    const pension = pensionForYear(year);
+    const incomeTotal = INCOME_IDS.reduce((s, id) => s + getYearlyEffectiveValue(id, year), 0) + insurancePayout + pension;
     const eventCost = lifeEventCost(year);
     const insurancePremium = insurancePremiumTotal(year);
     const expCategoryTotal = expenseCategoryRows().reduce((s, r) => s + getYearlyEffectiveValue(r.id, year), 0);
@@ -1889,6 +2097,7 @@ function recalcAll() {
 
     setComputedCell('expEvent', year, eventCost);
     setComputedCell('expInsurance', year, insurancePremium);
+    setComputedCell('incomePension', year, pension);
     setComputedCell('incomeInsurance', year, insurancePayout);
     const evNameTd = document.querySelector(`#timelineBody td.event-name-cell[data-row-id="event"][data-year="${year}"]`);
     if (evNameTd) evNameTd.textContent = lifeEventNames(year);
@@ -2025,6 +2234,7 @@ renderCategorySettings();
 renderInvestmentSettings();
 renderLifeEventSettings();
 renderInsuranceSettings();
+renderPensionSettings();
 generateTable();
 generateMonthlyTable();
 

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
 <title>家計簿 - ライフマネープラン</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="chart.umd.min.js"></script>
 <style>
   :root {
     --bg: #eef7fb;
@@ -36,9 +36,70 @@
     display: inline-block;
   }
   .subtitle { color: var(--text-light); font-size: 14px; margin: 0 0 12px; }
-  nav { font-size: 13px; margin-bottom: 16px; }
-  nav a { color: var(--accent); text-decoration: none; margin-right: 12px; }
-  nav a:hover { text-decoration: underline; }
+  /* 左サイドバー(常時表示ナビ) */
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 200px;
+    height: 100vh;
+    background: var(--card-bg);
+    border-right: 3px solid var(--accent);
+    box-shadow: 2px 0 10px rgba(56,182,211,0.10);
+    padding: 22px 0;
+    z-index: 100;
+    overflow-y: auto;
+  }
+  .sidebar-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--accent);
+    padding: 0 20px 16px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 10px;
+  }
+  .sidebar a {
+    display: block;
+    padding: 14px 20px;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+    text-decoration: none;
+    border-left: 3px solid transparent;
+    transition: background .12s;
+  }
+  .sidebar a:hover { background: var(--section-bg); }
+  .sidebar a.active {
+    color: var(--accent);
+    background: var(--section-bg);
+    border-left-color: var(--accent);
+  }
+  .sidebar a.sidebar-sub {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-light);
+    margin-top: 14px;
+  }
+  body { padding-left: 224px; }
+  @media (max-width: 768px) {
+    .sidebar {
+      position: static;
+      width: auto;
+      height: auto;
+      border-right: none;
+      border-bottom: 3px solid var(--accent);
+      box-shadow: none;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 2px;
+      padding: 8px;
+      margin-bottom: 12px;
+    }
+    .sidebar-title { display: none; }
+    .sidebar a { padding: 8px 12px; font-size: 14px; border-left: none; border-radius: 6px; }
+    .sidebar a.sidebar-sub { margin-top: 0; }
+    body { padding-left: 16px; padding-right: 16px; }
+  }
   .card {
     background: var(--card-bg);
     border: 1px solid var(--border);
@@ -338,13 +399,15 @@
   </div>
 </div>
 <div class="page" style="display:none">
+  <nav class="sidebar">
+    <div class="sidebar-title">ライフマネープラン</div>
+    <a href="kakeibo.html" class="active">家計簿</a>
+    <a href="timeline.html#monthly">月次キャッシュフロー</a>
+    <a href="timeline.html#yearly">年次タイムライン</a>
+    <a href="index.html" class="sidebar-sub">投資シミュレーション</a>
+  </nav>
   <h1>家計簿</h1>
   <p class="subtitle">月ごとの支出記録と固定費を管理します(このページは円単位。他ページは万円単位です)</p>
-  <nav>
-    <a href="index.html">投資シミュレーション</a>
-    <a href="timeline.html">人生キャッシュフロー</a>
-    <a href="kakeibo.html">家計簿</a>
-  </nav>
 
   <div class="card">
     <div class="month-nav">
@@ -394,7 +457,7 @@
     <h2>月合計</h2>
     <div class="summary-grid" id="summaryGrid"></div>
     <div class="result-line" style="margin-top:12px;">
-      この月の分類別合計を人生キャッシュフローに反映します。
+      この月の分類別合計(固定費も含む)を人生キャッシュフローに反映します。
       <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
         <button class="add-btn" id="reflectThisMonthBtn" style="margin-top:0;">①今月の金額のみフローに反映</button>
         <button class="add-btn" id="reflectFromThisMonthBtn" style="margin-top:0;">②今月以降すべてに反映</button>
@@ -712,13 +775,49 @@ function getMonthTotal(monthKey) {
   return variable + fixed;
 }
 
-function computeCategoryTotals(month) {
+function computeCategoryTotals(month, includeFixed) {
   const totals = {};
   categoryStore.categories.forEach(c => totals[c.name] = 0);
   month.transactions.forEach(t => {
     totals[t.category] = (totals[t.category] || 0) + (t.amount || 0);
   });
+  if (includeFixed) {
+    FIXED_COST_ITEMS.forEach(item => {
+      const amount = (month.fixedCosts && month.fixedCosts[item]) || 0;
+      if (amount === 0) return;
+      totals[item] = (totals[item] || 0) + amount;
+    });
+  }
   return totals;
+}
+
+// 固定費の各項目(電気・水道など)を、人生キャッシュフローの分類として用意する。
+// 金額が入っている項目だけ、まだ同名の分類が無ければ「固定費」大項目の下に作成する。
+function ensureFixedCostCategories(month) {
+  let changed = false;
+  let group = categoryStore.groups.find(g => g.name === '固定費');
+  FIXED_COST_ITEMS.forEach(item => {
+    const amount = (month.fixedCosts && month.fixedCosts[item]) || 0;
+    if (amount <= 0) return;
+    if (categoryStore.categories.some(c => c.name === item)) return;
+    if (!group) {
+      group = { id: 'fixed' + Date.now(), name: '固定費' };
+      categoryStore.groups.push(group);
+      changed = true;
+    }
+    categoryStore.categories.push({
+      id: 'fx' + Date.now() + Math.floor(Math.random() * 10000),
+      name: item,
+      groupId: group.id,
+    });
+    changed = true;
+  });
+  if (changed) {
+    saveCategoryStore(categoryStore);
+    renderCategorySettings();
+    renderTransactions();
+  }
+  return changed;
 }
 
 function updateSummary() {
@@ -1055,8 +1154,10 @@ document.getElementById('reflectThisMonthBtn').addEventListener('click', () => {
   const target = getReflectTarget();
   if (!target) return;
   const { tdata, year, month } = target;
-  const totals = computeCategoryTotals(getMonthData(currentMonth));
-  if (!confirmReflect(`${formatMonthLabel(currentMonth)}の分類別合計を、人生キャッシュフローの${formatMonthLabel(currentMonth)}にのみ反映します。`, totals)) return;
+  const monthData = getMonthData(currentMonth);
+  ensureFixedCostCategories(monthData);
+  const totals = computeCategoryTotals(monthData, true);
+  if (!confirmReflect(`${formatMonthLabel(currentMonth)}の分類別合計(固定費を含む)を、人生キャッシュフローの${formatMonthLabel(currentMonth)}にのみ反映します。`, totals)) return;
 
   categoryStore.categories.forEach(c => {
     const manYen = (totals[c.name] || 0) / 10000;
@@ -1070,8 +1171,10 @@ document.getElementById('reflectFromThisMonthBtn').addEventListener('click', () 
   const target = getReflectTarget();
   if (!target) return;
   const { tdata, year, month } = target;
-  const totals = computeCategoryTotals(getMonthData(currentMonth));
-  if (!confirmReflect(`${formatMonthLabel(currentMonth)}の分類別合計を、人生キャッシュフローの${formatMonthLabel(currentMonth)}以降すべての基準額として反映します。`, totals)) return;
+  const monthData = getMonthData(currentMonth);
+  ensureFixedCostCategories(monthData);
+  const totals = computeCategoryTotals(monthData, true);
+  if (!confirmReflect(`${formatMonthLabel(currentMonth)}の分類別合計(固定費を含む)を、人生キャッシュフローの${formatMonthLabel(currentMonth)}以降すべての基準額として反映します。`, totals)) return;
 
   categoryStore.categories.forEach(c => {
     const rowId = `cat_${c.id}`;

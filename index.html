@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
 <title>ライフマネープラン - 資産シミュレーション</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="chart.umd.min.js"></script>
 <style>
   :root {
     --color-cash: #38b6d3;
@@ -43,6 +43,70 @@
     color: var(--text-light);
     font-size: 14px;
     margin: 0 0 20px;
+  }
+  /* 左サイドバー(常時表示ナビ) */
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 200px;
+    height: 100vh;
+    background: var(--card-bg);
+    border-right: 3px solid var(--accent);
+    box-shadow: 2px 0 10px rgba(56,182,211,0.10);
+    padding: 22px 0;
+    z-index: 100;
+    overflow-y: auto;
+  }
+  .sidebar-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--accent);
+    padding: 0 20px 16px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 10px;
+  }
+  .sidebar a {
+    display: block;
+    padding: 14px 20px;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+    text-decoration: none;
+    border-left: 3px solid transparent;
+    transition: background .12s;
+  }
+  .sidebar a:hover { background: var(--section-bg); }
+  .sidebar a.active {
+    color: var(--accent);
+    background: var(--section-bg);
+    border-left-color: var(--accent);
+  }
+  .sidebar a.sidebar-sub {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-light);
+    margin-top: 14px;
+  }
+  body { padding-left: 224px; }
+  @media (max-width: 768px) {
+    .sidebar {
+      position: static;
+      width: auto;
+      height: auto;
+      border-right: none;
+      border-bottom: 3px solid var(--accent);
+      box-shadow: none;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 2px;
+      padding: 8px;
+      margin-bottom: 12px;
+    }
+    .sidebar-title { display: none; }
+    .sidebar a { padding: 8px 12px; font-size: 14px; border-left: none; border-radius: 6px; }
+    .sidebar a.sidebar-sub { margin-top: 0; }
+    body { padding-left: 16px; padding-right: 16px; }
   }
   .grid {
     display: grid;
@@ -213,13 +277,15 @@
   </div>
 </div>
 <div class="container" style="display:none">
-  <h1>ライフマネープラン</h1>
-  <p class="subtitle">現在の資産とキャッシュフローから、将来の資産推移をシミュレーションします（単位：万円）</p>
-  <nav style="font-size:13px; margin-bottom:16px;">
-    <a href="index.html" style="color:#38b6d3; text-decoration:none; margin-right:12px;">投資シミュレーション</a>
-    <a href="timeline.html" style="color:#38b6d3; text-decoration:none; margin-right:12px;">人生キャッシュフロー</a>
-    <a href="kakeibo.html" style="color:#38b6d3; text-decoration:none;">家計簿</a>
+  <nav class="sidebar">
+    <div class="sidebar-title">ライフマネープラン</div>
+    <a href="kakeibo.html">家計簿</a>
+    <a href="timeline.html#monthly">月次キャッシュフロー</a>
+    <a href="timeline.html#yearly">年次タイムライン</a>
+    <a href="index.html" class="sidebar-sub active">投資シミュレーション</a>
   </nav>
+  <h1>投資シミュレーション</h1>
+  <p class="subtitle">現在の資産とキャッシュフローから、将来の資産推移をシミュレーションします（単位：万円）</p>
 
   <div class="grid">
     <div class="card">
