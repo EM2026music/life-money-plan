@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>TOP - デザイン４ライフ</title>
+<style>
+  :root {
+    --bg: #eef7fb;
+    --card-bg: #ffffff;
+    --border: #d4e8f0;
+    --text: #2c3a42;
+    --text-light: #7c8d97;
+    --accent: #38b6d3;
+    --accent-line: #7ed3e8;
+    --section-bg: #e2f3fa;
+    --neg: #d9534f;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Hiragino Sans", "Yu Gothic", "Segoe UI", system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 24px;
+    padding-left: 244px;
+  }
+  .page { max-width: 1000px; margin: 0 auto; }
+  h1 {
+    font-size: 24px;
+    margin: 0 0 4px;
+    color: var(--accent);
+    border-bottom: 3px solid var(--accent-line);
+    padding-bottom: 8px;
+    display: inline-block;
+  }
+  .subtitle { color: var(--text-light); font-size: 14px; margin: 0 0 20px; }
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-top: 3px solid var(--accent);
+    border-radius: 12px;
+    padding: 18px 20px;
+    box-shadow: 0 1px 3px rgba(56,182,211,0.08);
+    margin-bottom: 16px;
+  }
+  .card h2 {
+    font-size: 15px;
+    margin: 0 0 14px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--accent-line);
+  }
+  .settings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+  }
+  .settings-grid label {
+    display: block;
+    font-size: 12px;
+    color: var(--text-light);
+  }
+  .settings-grid input {
+    display: block;
+    width: 100%;
+    margin-top: 4px;
+    font-size: 14px;
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-family: inherit;
+  }
+  .quick-links { display: flex; flex-wrap: wrap; gap: 12px; }
+  .quick-links a {
+    flex: 1;
+    min-width: 160px;
+    text-decoration: none;
+    color: var(--text);
+    background: var(--section-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px;
+    font-weight: 700;
+    font-size: 15px;
+    transition: background .12s, transform .06s;
+  }
+  .quick-links a:hover { background: #d4eef7; transform: translateY(-1px); }
+  .quick-links a span { display: block; font-size: 12px; font-weight: 400; color: var(--text-light); margin-top: 4px; }
+  .note { font-size: 12px; color: var(--text-light); margin-top: 12px; line-height: 1.6; }
+
+  /* 左サイドバー(常時表示ナビ) */
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 220px;
+    height: 100vh;
+    background: var(--card-bg);
+    border-right: 3px solid var(--accent);
+    box-shadow: 2px 0 10px rgba(56,182,211,0.10);
+    padding: 22px 0;
+    z-index: 100;
+    overflow-y: auto;
+  }
+  .sidebar-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--accent);
+    padding: 0 20px 16px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 10px;
+  }
+  .sidebar a {
+    display: block;
+    padding: 14px 20px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    text-decoration: none;
+    border-left: 3px solid transparent;
+    transition: background .12s;
+    white-space: nowrap;
+  }
+  .sidebar a:hover { background: var(--section-bg); }
+  .sidebar a.active {
+    color: var(--accent);
+    background: var(--section-bg);
+    border-left-color: var(--accent);
+  }
+  .sidebar a.sidebar-sub {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-light);
+    margin-top: 14px;
+  }
+  @media (max-width: 768px) {
+    .sidebar {
+      position: static;
+      width: auto;
+      height: auto;
+      border-right: none;
+      border-bottom: 3px solid var(--accent);
+      box-shadow: none;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 2px;
+      padding: 8px;
+      margin-bottom: 12px;
+    }
+    .sidebar-title { display: none; }
+    .sidebar a { padding: 8px 12px; font-size: 14px; border-left: none; border-radius: 6px; }
+    .sidebar a.sidebar-sub { margin-top: 0; }
+    body { padding-left: 16px; padding-right: 16px; }
+  }
+
+  /* 簡易パスワードゲート */
+  .auth-gate {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+  }
+  .auth-box {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 32px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    text-align: center;
+    width: 90%;
+    max-width: 320px;
+  }
+  .auth-box h2 { font-size: 16px; margin: 0 0 16px; color: var(--text); }
+  .auth-box input {
+    display: block;
+    width: 100%;
+    font-size: 15px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: inherit;
+    margin-bottom: 12px;
+    box-sizing: border-box;
+  }
+  .auth-box button {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 24px;
+    font-size: 14px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .auth-box button:hover { opacity: 0.9; }
+  .auth-error { color: #d9534f; font-size: 13px; margin: 10px 0 0; }
+</style>
+</head>
+<body>
+<div id="authGate" class="auth-gate">
+  <div class="auth-box">
+    <h2>合言葉を入力してください</h2>
+    <input type="password" id="authPassword" placeholder="パスワード" autocomplete="off">
+    <button type="button" id="authSubmit">開く</button>
+    <p id="authError" class="auth-error" style="display:none;">合言葉が違います</p>
+  </div>
+</div>
+<div class="page" style="display:none">
+  <nav class="sidebar">
+    <div class="sidebar-title">デザイン４ライフ</div>
+    <a href="top.html" class="active">TOP</a>
+    <a href="kakeibo.html">家計簿</a>
+    <a href="timeline.html#monthly">月次キャッシュフロー</a>
+    <a href="timeline.html#yearly">年次タイムライン</a>
+    <a href="index.html" class="sidebar-sub">投資シミュレーション</a>
+  </nav>
+  <h1>デザイン４ライフ</h1>
+  <p class="subtitle">人生で何がいつ起きて、そのときお金がどうなるかを一枚で見るためのツール。</p>
+
+  <div class="card">
+    <h2>基本情報</h2>
+    <div class="settings-grid">
+      <label>開始年
+        <input type="number" id="startYear">
+      </label>
+      <label>シミュレーション年数
+        <input type="number" id="numYears">
+      </label>
+      <label>現在の現金資産（円）
+        <input type="text" inputmode="numeric" id="initialAssets">
+      </label>
+      <label>パパ 生年
+        <input type="number" id="birthDad">
+      </label>
+      <label>ママ 生年
+        <input type="number" id="birthMom">
+      </label>
+      <label>子1 生年
+        <input type="number" id="birthChild1">
+      </label>
+      <label>子2 生年（いなければ空欄）
+        <input type="number" id="birthChild2">
+      </label>
+    </div>
+    <p class="note">ここで設定した開始年・年数・現金資産・家族の生年は、人生キャッシュフロー(月次・年次)に反映されます。生年は年次タイムラインの名前の右からも変更できます。</p>
+  </div>
+
+  <div class="card">
+    <h2>ページ</h2>
+    <div class="quick-links">
+      <a href="kakeibo.html">家計簿<span>日々の支出・固定費を記録</span></a>
+      <a href="timeline.html#monthly">月次キャッシュフロー<span>月ごとの収支プラン</span></a>
+      <a href="timeline.html#yearly">年次タイムライン<span>年ごとの資産シミュレーション</span></a>
+      <a href="index.html">投資シミュレーション<span>複利での資産推移</span></a>
+    </div>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = 'lifeMoneyTimelineV1';
+const BIRTH_IDS = ['birthDad','birthMom','birthChild1','birthChild2'];
+
+function defaultData() {
+  return {
+    startYear: 2026,
+    numYears: 35,
+    initialAssets: 500,
+    births: { birthDad: 1988, birthMom: 1990, birthChild1: 2021, birthChild2: null },
+    cells: {},
+    investments: [],
+    lifeEvents: [],
+    insurances: [],
+    monthlyCells: {},
+    pension: { dad: { startAge: 65, amount: 0 }, mom: { startAge: 65, amount: 0 } },
+  };
+}
+
+function loadData() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if (saved) {
+      if (!saved.births) saved.births = defaultData().births;
+      return saved;
+    }
+  } catch (e) {}
+  return defaultData();
+}
+
+function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
+
+let data = loadData();
+
+// 内部は万円で保持、現金資産の表示・入力は円(カンマ区切り)。
+function toYen(man) { return Math.round((man || 0) * 10000); }
+function fromYen(yen) { return (yen || 0) / 10000; }
+function formatInputYen(man) { return toYen(man).toLocaleString(); }
+function parseYenInput(str) { return fromYen(parseFloat(String(str).replace(/[^0-9.\-]/g, '')) || 0); }
+
+function initBasicInfo() {
+  document.getElementById('startYear').value = data.startYear;
+  document.getElementById('numYears').value = data.numYears;
+  const ia = document.getElementById('initialAssets');
+  ia.value = formatInputYen(data.initialAssets);
+  ia.addEventListener('focus', () => { ia.value = ia.value.replace(/[,，\s]/g, ''); ia.select(); });
+  ia.addEventListener('blur', () => { ia.value = formatInputYen(parseYenInput(ia.value)); });
+  BIRTH_IDS.forEach(id => { document.getElementById(id).value = data.births[id] ?? ''; });
+
+  document.getElementById('startYear').addEventListener('change', e => {
+    data.startYear = parseInt(e.target.value) || 2026; saveData();
+  });
+  document.getElementById('numYears').addEventListener('change', e => {
+    data.numYears = Math.max(1, parseInt(e.target.value) || 1); saveData();
+  });
+  ia.addEventListener('input', e => { data.initialAssets = parseYenInput(e.target.value); saveData(); });
+  BIRTH_IDS.forEach(id => {
+    document.getElementById(id).addEventListener('input', e => {
+      const v = e.target.value;
+      data.births[id] = v === '' ? null : parseInt(v);
+      saveData();
+    });
+  });
+}
+
+initBasicInfo();
+</script>
+
+<script>
+// 簡易パスワードゲート(他ページと共通)
+(function() {
+  const AUTH_KEY = 'lifeMoneyAuthV1';
+  const AUTH_HASH = '092a674450f5c571cb12b93efb0647da3c8b1b84e93a76cef3130464b4635f7a';
+  const gate = document.getElementById('authGate');
+  const wrapper = document.querySelector('.page');
+  const input = document.getElementById('authPassword');
+  const error = document.getElementById('authError');
+
+  function unlock() { gate.style.display = 'none'; wrapper.style.display = ''; }
+
+  async function tryUnlock() {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input.value));
+    const hex = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+    if (hex === AUTH_HASH) {
+      localStorage.setItem(AUTH_KEY, 'ok');
+      error.style.display = 'none';
+      unlock();
+    } else {
+      error.style.display = 'block';
+      input.value = '';
+      input.focus();
+    }
+  }
+
+  if (localStorage.getItem(AUTH_KEY) === 'ok') unlock(); else input.focus();
+  document.getElementById('authSubmit').addEventListener('click', tryUnlock);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') tryUnlock(); });
+})();
+</script>
+</body>
+</html>

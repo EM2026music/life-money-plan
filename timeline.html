@@ -174,7 +174,7 @@
   /* 表のスクロール領域。ここを縦横スクロールしても見出し・項目名が固定される(Excelのウィンドウ枠固定) */
   .grid-scroll {
     overflow: auto;
-    max-height: 72vh;
+    max-height: 80vh;
   }
   table.timeline {
     border-collapse: separate;
@@ -188,8 +188,10 @@
     padding: 15px 8px;
     text-align: right;
   }
-  table.timeline thead th { border-top: 1px solid var(--border); }
+  table.timeline thead th { border-top: 1px solid var(--border); padding: 7px 8px; }
   table.timeline th:first-child, table.timeline td:first-child { border-left: 1px solid var(--border); }
+  /* 固定エリア(年齢・名前・イベント)は行を低く。下のスクロールする項目行は広いまま。 */
+  table.timeline tr.frozen-row td { padding: 4px 8px; }
   table.timeline th {
     position: sticky;
     top: 0;
@@ -309,6 +311,18 @@
   input.event-input { width: 90px; text-align: left; }
   .age-cell { color: var(--text-light); }
   .age-cell .grade { color: var(--accent); font-size: 10px; margin-left: 4px; font-weight: 600; }
+  .birth-inline {
+    width: 52px;
+    margin-left: 6px;
+    font-size: 11px;
+    padding: 1px 3px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-family: inherit;
+    color: var(--text);
+    font-weight: 400;
+  }
+  .birth-inline:focus { outline: none; border-color: var(--accent); }
   tr.computed-row td.computed-cell { font-weight: 700; background: #f7f9fb; }
   .computed-cell.negative { color: var(--neg); }
   .copy-btn {
@@ -529,6 +543,7 @@
 <div class="page" style="display:none">
   <nav class="sidebar">
     <div class="sidebar-title">デザイン４ライフ</div>
+    <a href="top.html">TOP</a>
     <a href="kakeibo.html">家計簿</a>
     <a href="timeline.html#monthly">月次キャッシュフロー</a>
     <a href="timeline.html#yearly">年次タイムライン</a>
@@ -557,32 +572,6 @@
   </div>
 
   <div id="viewYearly">
-  <div class="card">
-    <h2>基本情報</h2>
-    <div class="settings-grid">
-      <label>開始年
-        <input type="number" id="startYear">
-      </label>
-      <label>シミュレーション年数
-        <input type="number" id="numYears">
-      </label>
-      <label>現在の現金資産（円）
-        <input type="text" inputmode="numeric" id="initialAssets">
-      </label>
-      <label>パパ 生年
-        <input type="number" id="birthDad">
-      </label>
-      <label>ママ 生年
-        <input type="number" id="birthMom">
-      </label>
-      <label>子1 生年
-        <input type="number" id="birthChild1">
-      </label>
-      <label>子2 生年（いなければ空欄）
-        <input type="number" id="birthChild2">
-      </label>
-    </div>
-  </div>
 
   <div class="card table-wrap" id="yearly">
     <h2>年次タイムライン</h2>
@@ -1144,16 +1133,21 @@ function getYears() {
   return Array.from({ length: data.numYears }, (_, i) => data.startYear + i);
 }
 
+// 基本情報フォームはTOPページ(top.html)へ移行済み。
+// このページに該当の入力欄が無い場合は何もしない(null安全)。
 function initSettingsInputs() {
-  document.getElementById('startYear').value = data.startYear;
+  const startYearEl = document.getElementById('startYear');
+  if (!startYearEl) return;
+  startYearEl.value = data.startYear;
   document.getElementById('numYears').value = data.numYears;
   document.getElementById('initialAssets').value = formatInputYen(data.initialAssets);
   attachMoneyInputFormat(document.getElementById('initialAssets'));
   BIRTH_IDS.forEach(id => {
-    document.getElementById(id).value = data.births[id] ?? '';
+    const el = document.getElementById(id);
+    if (el) el.value = data.births[id] ?? '';
   });
 
-  document.getElementById('startYear').addEventListener('change', e => {
+  startYearEl.addEventListener('change', e => {
     data.startYear = parseInt(e.target.value) || 2026;
     saveData();
     generateTable();
@@ -1172,6 +1166,7 @@ function initSettingsInputs() {
   });
   BIRTH_IDS.forEach(id => {
     const el = document.getElementById(id);
+    if (!el) return;
     el.addEventListener('input', e => {
       const v = e.target.value;
       data.births[id] = v === '' ? null : parseInt(v);
@@ -1835,6 +1830,21 @@ function generateTable() {
     labelTd.className = 'row-label';
     if (row.id.startsWith('catgrp_') || row.catId !== undefined) {
       buildEditableCategoryLabel(labelTd, row);
+    } else if (row.type === 'age' && row.birth) {
+      // 名前 + 生まれ年の直接入力(基本情報を開かなくてもここで変更できる)
+      labelTd.appendChild(document.createTextNode(row.label));
+      const birthInput = document.createElement('input');
+      birthInput.type = 'number';
+      birthInput.className = 'birth-inline';
+      birthInput.placeholder = '生年';
+      birthInput.value = data.births[row.birth] ?? '';
+      birthInput.addEventListener('change', e => {
+        const v = e.target.value;
+        data.births[row.birth] = v === '' ? null : parseInt(v);
+        saveData();
+        recalcAll();
+      });
+      labelTd.appendChild(birthInput);
     } else {
       labelTd.textContent = row.label;
     }
