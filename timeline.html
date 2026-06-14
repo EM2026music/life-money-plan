@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
-<title>人生キャッシュフロー - ライフマネープラン</title>
+<title>キャッシュフロー - デザイン４ライフ</title>
 <script src="chart.umd.min.js"></script>
 <style>
   :root {
@@ -44,7 +44,7 @@
     position: fixed;
     top: 0;
     left: 0;
-    width: 200px;
+    width: 220px;
     height: 100vh;
     background: var(--card-bg);
     border-right: 3px solid var(--accent);
@@ -64,12 +64,13 @@
   .sidebar a {
     display: block;
     padding: 14px 20px;
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 600;
     color: var(--text);
     text-decoration: none;
     border-left: 3px solid transparent;
     transition: background .12s;
+    white-space: nowrap;
   }
   .sidebar a:hover { background: var(--section-bg); }
   .sidebar a.active {
@@ -83,7 +84,7 @@
     color: var(--text-light);
     margin-top: 14px;
   }
-  body { padding-left: 224px; }
+  body { padding-left: 244px; }
   @media (max-width: 768px) {
     .sidebar {
       position: static;
@@ -184,7 +185,7 @@
   table.timeline th, table.timeline td {
     border-right: 1px solid var(--border);
     border-bottom: 1px solid var(--border);
-    padding: 4px 6px;
+    padding: 9px 8px;
     text-align: right;
   }
   table.timeline thead th { border-top: 1px solid var(--border); }
@@ -267,8 +268,20 @@
     text-align: left;
     padding: 6px 8px;
   }
+  tr.sec-hidden { display: none; }
+  .section-toggle-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 11px;
+    padding: 0;
+    margin-right: 6px;
+    color: var(--accent);
+    font-family: inherit;
+    vertical-align: middle;
+  }
   .cell-input {
-    width: 56px;
+    width: 82px;
     border: none;
     background: transparent;
     text-align: right;
@@ -295,6 +308,7 @@
   }
   input.event-input { width: 90px; text-align: left; }
   .age-cell { color: var(--text-light); }
+  .age-cell .grade { color: var(--accent); font-size: 10px; margin-left: 4px; font-weight: 600; }
   tr.computed-row td.computed-cell { font-weight: 700; background: #f7f9fb; }
   .computed-cell.negative { color: var(--neg); }
   .copy-btn {
@@ -498,42 +512,16 @@
 </div>
 <div class="page" style="display:none">
   <nav class="sidebar">
-    <div class="sidebar-title">ライフマネープラン</div>
+    <div class="sidebar-title">デザイン４ライフ</div>
     <a href="kakeibo.html">家計簿</a>
-    <a href="timeline.html#monthly" class="active">月次キャッシュフロー</a>
-    <a href="timeline.html#yearly" class="active">年次タイムライン</a>
+    <a href="timeline.html#monthly">月次キャッシュフロー</a>
+    <a href="timeline.html#yearly">年次タイムライン</a>
     <a href="index.html" class="sidebar-sub">投資シミュレーション</a>
   </nav>
   <h1>人生キャッシュフロー</h1>
   <p class="subtitle">年ごとの年齢・収入・支出・投資から、総資産の推移をシミュレーションします（単位：円）</p>
 
-  <div class="card">
-    <h2>基本情報</h2>
-    <div class="settings-grid">
-      <label>開始年
-        <input type="number" id="startYear">
-      </label>
-      <label>シミュレーション年数
-        <input type="number" id="numYears">
-      </label>
-      <label>現在の現金資産（円）
-        <input type="number" id="initialAssets">
-      </label>
-      <label>パパ 生年
-        <input type="number" id="birthDad">
-      </label>
-      <label>ママ 生年
-        <input type="number" id="birthMom">
-      </label>
-      <label>子1 生年
-        <input type="number" id="birthChild1">
-      </label>
-      <label>子2 生年（いなければ空欄）
-        <input type="number" id="birthChild2">
-      </label>
-    </div>
-  </div>
-
+  <div id="viewMonthly" style="display:none">
   <div class="card table-wrap" id="monthly">
     <h2>月次キャッシュフロー</h2>
     <div class="settings-grid">
@@ -548,6 +536,35 @@
         </thead>
         <tbody id="monthlyBody"></tbody>
       </table>
+    </div>
+  </div>
+  </div>
+
+  <div id="viewYearly">
+  <div class="card">
+    <h2>基本情報</h2>
+    <div class="settings-grid">
+      <label>開始年
+        <input type="number" id="startYear">
+      </label>
+      <label>シミュレーション年数
+        <input type="number" id="numYears">
+      </label>
+      <label>現在の現金資産（円）
+        <input type="text" inputmode="numeric" id="initialAssets">
+      </label>
+      <label>パパ 生年
+        <input type="number" id="birthDad">
+      </label>
+      <label>ママ 生年
+        <input type="number" id="birthMom">
+      </label>
+      <label>子1 生年
+        <input type="number" id="birthChild1">
+      </label>
+      <label>子2 生年（いなければ空欄）
+        <input type="number" id="birthChild2">
+      </label>
     </div>
   </div>
 
@@ -620,6 +637,16 @@
     </div>
   </div>
 
+  <div class="card">
+    <h2 class="collapsible-header" data-collapse-target="backupSettingsBody">データのバックアップ <span class="section-toggle">▶</span></h2>
+    <div id="backupSettingsBody" class="collapsible-body collapsed-section">
+      <p class="empty-note">入力データ(人生キャッシュフロー・家計簿・分類)をまとめて1つのファイルに書き出し／読み込みできます。端末を変えるときや、念のためのバックアップにどうぞ。<strong>読み込むと現在のデータは上書きされます。</strong></p>
+      <button class="add-btn" id="exportDataBtn">バックアップを書き出す</button>
+      <button class="add-btn" id="importDataBtn" style="margin-left:8px;">バックアップを読み込む</button>
+      <input type="file" id="importDataFile" accept="application/json,.json" style="display:none;">
+    </div>
+  </div>
+
   <p class="note">
     ※ 収入・支出は、編集した年から「それ以降ずっとその額」になります（編集した年より後ろは、いったんすべてその額に上書きされます）。薄い文字のセルは引き継がれた値です。途中で金額を変えたいときは、先に手前の年を入れてから、変わる年に新しい額を入力してください（例：2026年に3,000,000 → 全年300万円、続けて2031年に3,500,000 → 2026〜2030年は300万円・2031年以降は350万円）。※手前の年を編集し直すと、その先の変化点も上書きされます。<br>
     ※ 定年などで収入を止めたい年は、その年に「0」と入力すれば、それ以降ずっと0円として計算されます。<br>
@@ -628,7 +655,7 @@
     ※ 「保険の設定」で登録した保険は、タイムラインに「○○ 保険料」の行が追加され、毎年の「保険料」(支出)に統合されます。保険料の金額は年次タイムラインまたは月次プランナーのその行で編集してください。受取年・受取額(学資保険の満期受取など)を指定すると、その年の「保険受取」(収入)に加算されます。<br>
     ※ 「月次プランナー」の「基準額(月額)」は、年次タイムラインのその年の値を12等分した月額です。基準額を編集すると、その年の1〜12月がその月額に一括リセットされ、年次タイムラインのその年の値も「月額×12」に更新されます（シミュレーション的に使えます）。1〜12月の個別セルを編集すると、その月だけ実績として上書きされ、他の月や基準額には影響しません（年間値は月別合計に自動反映されます）。「リセット」ボタンでその年の月別の上書きをすべて解除できます。
   </p>
-</div>
+  </div>
 
 <script>
 const STORAGE_KEY = 'lifeMoneyTimelineV1';
@@ -909,6 +936,17 @@ function insurancePayoutTotal(year) {
   return data.insurances.reduce((s, ins) => s + (ins.payoutYear === year ? (ins.payoutAmount || 0) : 0), 0);
 }
 
+// 年齢から日本の学年を返す(目安。4月始まりの厳密判定はしていない)。子の年齢セルに表示。
+function schoolGrade(age) {
+  if (age == null || age < 3) return '';
+  if (age <= 5) return ['年少', '年中', '年長'][age - 3];
+  if (age <= 11) return '小' + (age - 5);
+  if (age <= 14) return '中' + (age - 11);
+  if (age <= 17) return '高' + (age - 14);
+  if (age <= 21) return '大' + (age - 17);
+  return '';
+}
+
 // その年の年金合計（万円）。パパ・ママそれぞれ、生年から計算した年齢が受給開始年齢以上なら年額を加算。
 function pensionForYear(year) {
   const p = data.pension || {};
@@ -1076,6 +1114,16 @@ function toYen(man) { return Math.round((man || 0) * 10000); }
 function fromYen(yen) { return (yen || 0) / 10000; }
 function formatYen(man) { return toYen(man).toLocaleString(); }
 
+// 入力欄(円)用: 表示はカンマ区切り、解析はカンマ等を除去して万円に戻す。
+function formatInputYen(man) { return toYen(man).toLocaleString(); }
+function parseYenInput(str) { return fromYen(parseFloat(String(str).replace(/[^0-9.\-]/g, '')) || 0); }
+// 入力欄に、フォーカス時は数字のみ・離れたらカンマ区切り、の挙動を付ける。
+function attachMoneyInputFormat(input) {
+  input.setAttribute('inputmode', 'numeric');
+  input.addEventListener('focus', () => { input.value = input.value.replace(/[,，\s]/g, ''); input.select(); });
+  input.addEventListener('blur', () => { input.value = formatInputYen(parseYenInput(input.value)); });
+}
+
 function getYears() {
   return Array.from({ length: data.numYears }, (_, i) => data.startYear + i);
 }
@@ -1083,7 +1131,8 @@ function getYears() {
 function initSettingsInputs() {
   document.getElementById('startYear').value = data.startYear;
   document.getElementById('numYears').value = data.numYears;
-  document.getElementById('initialAssets').value = toYen(data.initialAssets);
+  document.getElementById('initialAssets').value = formatInputYen(data.initialAssets);
+  attachMoneyInputFormat(document.getElementById('initialAssets'));
   BIRTH_IDS.forEach(id => {
     document.getElementById(id).value = data.births[id] ?? '';
   });
@@ -1101,11 +1150,10 @@ function initSettingsInputs() {
     generateMonthlyTable();
   });
   document.getElementById('initialAssets').addEventListener('input', e => {
-    data.initialAssets = fromYen(parseFloat(e.target.value) || 0);
+    data.initialAssets = parseYenInput(e.target.value);
     saveData();
     recalcAll();
   });
-  document.getElementById('initialAssets').addEventListener('wheel', () => document.getElementById('initialAssets').blur());
   BIRTH_IDS.forEach(id => {
     const el = document.getElementById(id);
     el.addEventListener('input', e => {
@@ -1538,10 +1586,72 @@ document.getElementById('resetCategoriesBtn').addEventListener('click', () => {
   alert('分類を初期状態に戻しました。金額データは保持されています。');
 });
 
+// --- データのバックアップ(書き出し/読み込み) ---
+const BACKUP_KEYS = ['lifeMoneyTimelineV1', 'lifeMoneyKakeiboV1', 'lifeMoneyCategoriesV1'];
+
+document.getElementById('exportDataBtn').addEventListener('click', () => {
+  const dump = { _app: 'design4life', _version: 1, _exportedAt: new Date().toISOString(), data: {} };
+  BACKUP_KEYS.forEach(k => { const v = localStorage.getItem(k); if (v !== null) dump.data[k] = v; });
+  const blob = new Blob([JSON.stringify(dump, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const d = new Date();
+  const stamp = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  a.href = url;
+  a.download = `design4life-backup-${stamp}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+
+document.getElementById('importDataBtn').addEventListener('click', () => {
+  document.getElementById('importDataFile').click();
+});
+
+document.getElementById('importDataFile').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const parsed = JSON.parse(reader.result);
+      const payload = parsed && parsed.data ? parsed.data : parsed;
+      const keys = BACKUP_KEYS.filter(k => payload[k] !== undefined);
+      if (!keys.length) { alert('このファイルにはデザイン４ライフのデータが見つかりませんでした。'); return; }
+      if (!confirm('バックアップを読み込みます。現在のこの端末のデータは上書きされます。よろしいですか?')) return;
+      keys.forEach(k => localStorage.setItem(k, payload[k]));
+      alert('読み込みました。ページを再読み込みします。');
+      location.reload();
+    } catch (err) {
+      alert('読み込みに失敗しました。ファイルが壊れている可能性があります。');
+    } finally {
+      e.target.value = '';
+    }
+  };
+  reader.readAsText(file);
+});
+
 // --- annual timeline table ---
 
 // 支出の大項目ごとの折りたたみ状態(年次・月次グリッド共通)。大項目IDのSet。デフォルトは全て折りたたみ。
 let collapsedExpenseGroups = null;
+
+// セクション(年齢・ライフイベント・収入 など)ごとの折りたたみ状態。セクション名のSet。デフォルトは展開。
+let collapsedSections = new Set();
+
+// セクションの開閉を切り替え、配下の行(年次グリッド)の表示/非表示と矢印を更新する。
+function toggleSection(name) {
+  if (collapsedSections.has(name)) collapsedSections.delete(name);
+  else collapsedSections.add(name);
+  const collapsed = collapsedSections.has(name);
+  document.querySelectorAll(`#timelineBody tr[data-section="${name}"]`).forEach(tr => {
+    tr.classList.toggle('sec-hidden', collapsed);
+  });
+  const btn = document.querySelector(`#timelineBody .section-toggle-btn[data-section="${name}"]`);
+  if (btn) btn.textContent = collapsed ? '▶' : '▼';
+  applyYearlyFreeze();
+}
 
 function ensureCollapsedExpenseGroups() {
   if (collapsedExpenseGroups) return;
@@ -1681,13 +1791,17 @@ function generateTable() {
   const body = document.getElementById('timelineBody');
   body.innerHTML = '';
 
+  let currentSection = null;
   ROWS.forEach(row => {
     if (row.section) {
+      currentSection = row.section;
+      const collapsed = collapsedSections.has(row.section);
       const tr = document.createElement('tr');
       tr.className = 'section-row';
+      tr.dataset.sectionRow = row.section;
       const td = document.createElement('td');
       td.colSpan = years.length + 1;
-      td.textContent = row.section;
+      td.innerHTML = `<button type="button" class="section-toggle-btn" data-section="${row.section}">${collapsed ? '▶' : '▼'}</button>${row.section}`;
       tr.appendChild(td);
       body.appendChild(tr);
       return;
@@ -1695,7 +1809,11 @@ function generateTable() {
 
     const tr = document.createElement('tr');
     tr.dataset.rowId = row.id;
-    if (row.type === 'computed') tr.className = 'computed-row';
+    if (currentSection) {
+      tr.dataset.section = currentSection;
+      if (collapsedSections.has(currentSection)) tr.classList.add('sec-hidden');
+    }
+    if (row.type === 'computed') tr.className += ' computed-row';
 
     const labelTd = document.createElement('td');
     labelTd.className = 'row-label';
@@ -1727,21 +1845,20 @@ function generateTable() {
       } else {
         const input = document.createElement('input');
         input.className = row.type === 'text' ? 'cell-input event-input' : 'cell-input';
-        input.type = row.type === 'text' ? 'text' : 'number';
+        input.type = 'text';
         input.dataset.rowId = row.id;
         input.dataset.year = year;
         if (row.type === 'editable') {
-          input.value = toYen(getYearlyEffectiveValue(row.id, year));
+          input.value = formatInputYen(getYearlyEffectiveValue(row.id, year));
           input.classList.toggle('inherited', isInherited(row.id, year));
+          attachMoneyInputFormat(input);
         } else if (row.type === 'text') {
           input.value = getCellValue(row.id, year);
         } else {
-          input.value = toYen(getCellValue(row.id, year));
+          input.value = formatInputYen(getCellValue(row.id, year));
+          attachMoneyInputFormat(input);
         }
         input.addEventListener('input', onCellInput);
-        if (input.type === 'number') {
-          input.addEventListener('wheel', () => input.blur());
-        }
         td.appendChild(input);
       }
       tr.appendChild(td);
@@ -1752,6 +1869,9 @@ function generateTable() {
 
   body.querySelectorAll('.row-group-toggle').forEach(btn => {
     btn.addEventListener('click', () => toggleExpenseGroup(btn.dataset.groupId));
+  });
+  body.querySelectorAll('.section-toggle-btn').forEach(btn => {
+    btn.addEventListener('click', () => toggleSection(btn.dataset.section));
   });
 
   applyYearlyFreeze();
@@ -1794,7 +1914,7 @@ function onCellInput(e) {
   const rowId = e.target.dataset.rowId;
   const year = parseInt(e.target.dataset.year);
   const row = ROWS.find(r => r.id === rowId);
-  const value = row.type === 'text' ? e.target.value : fromYen(parseFloat(e.target.value) || 0);
+  const value = row.type === 'text' ? e.target.value : parseYenInput(e.target.value);
   setCellValue(rowId, year, value);
   // フォワードフィル対象の行は、編集した年より後ろの明示値・月別上書きをすべてクリアし、
   // 「編集した年からそれ以降ずっとこの値」になるようにする（後ろに古い値が残っていても確実に追従）。
@@ -1816,7 +1936,7 @@ function updateInputCells(years) {
     years.forEach(year => {
       const input = document.querySelector(`#timelineBody input[data-row-id="${row.id}"][data-year="${year}"]`);
       if (!input || input === document.activeElement) return;
-      input.value = toYen(getYearlyEffectiveValue(row.id, year));
+      input.value = formatInputYen(getYearlyEffectiveValue(row.id, year));
       input.classList.toggle('inherited', isInherited(row.id, year));
     });
   });
@@ -1920,12 +2040,12 @@ function generateMonthlyTable() {
     baseTd.className = 'base-cell';
     const baseInput = document.createElement('input');
     baseInput.className = 'cell-input base-input';
-    baseInput.type = 'number';
+    baseInput.type = 'text';
     baseInput.dataset.rowId = row.id;
-    baseInput.value = toYen(getCellValue(row.id, year) / 12);
+    baseInput.value = formatInputYen(getCellValue(row.id, year) / 12);
     baseInput.classList.toggle('inherited', isInherited(row.id, year));
+    attachMoneyInputFormat(baseInput);
     baseInput.addEventListener('input', onBaseCellInput);
-    baseInput.addEventListener('wheel', () => baseInput.blur());
     baseTd.appendChild(baseInput);
     tr.appendChild(baseTd);
 
@@ -1933,13 +2053,13 @@ function generateMonthlyTable() {
       const td = document.createElement('td');
       const input = document.createElement('input');
       input.className = 'cell-input';
-      input.type = 'number';
+      input.type = 'text';
       input.dataset.rowId = row.id;
       input.dataset.month = m;
-      input.value = toYen(getMonthlyEffectiveValue(row.id, year, m));
+      input.value = formatInputYen(getMonthlyEffectiveValue(row.id, year, m));
       input.classList.toggle('inherited', getMonthlyOverride(row.id, year, m) === undefined);
+      attachMoneyInputFormat(input);
       input.addEventListener('input', onMonthlyCellInput);
-      input.addEventListener('wheel', () => input.blur());
       td.appendChild(input);
       tr.appendChild(td);
     }
@@ -1978,7 +2098,7 @@ function generateMonthlyTable() {
 function onBaseCellInput(e) {
   const rowId = e.target.dataset.rowId;
   const year = data.monthlySelectedYear;
-  const monthly = fromYen(parseFloat(e.target.value) || 0);
+  const monthly = parseYenInput(e.target.value);
   // 基準額は月額入力。年間ベース値は月額×12として保存し、その年の月別上書きをリセット。
   setCellValue(rowId, year, monthly * 12);
   saveData();
@@ -1989,9 +2109,21 @@ function onMonthlyCellInput(e) {
   const rowId = e.target.dataset.rowId;
   const month = parseInt(e.target.dataset.month);
   const year = data.monthlySelectedYear;
-  const value = fromYen(parseFloat(e.target.value) || 0);
+  const value = parseYenInput(e.target.value);
+  // 編集していない月を「いまの値」で固定してから、編集値を反映。
+  for (let m = 1; m <= 12; m++) {
+    if (m === month) continue;
+    if (getMonthlyOverride(rowId, year, m) === undefined) {
+      setMonthlyOverride(rowId, year, m, getMonthlyEffectiveValue(rowId, year, m));
+    }
+  }
   setMonthlyOverride(rowId, year, month, value);
   e.target.classList.remove('inherited');
+  // 月をいじったら年次もその年の12ヶ月合計に自動更新する。
+  let sum = 0;
+  for (let m = 1; m <= 12; m++) sum += getMonthlyOverride(rowId, year, m) || 0;
+  if (!data.cells[rowId]) data.cells[rowId] = {};
+  data.cells[rowId][year] = sum;
   saveData();
   recalcAll();
 }
@@ -2024,7 +2156,7 @@ function recalcMonthlyTable() {
 
     const baseInput = document.querySelector(`#monthlyBody input.base-input[data-row-id="${row.id}"]`);
     if (baseInput && baseInput !== document.activeElement) {
-      baseInput.value = toYen(getCellValue(row.id, year) / 12);
+      baseInput.value = formatInputYen(getCellValue(row.id, year) / 12);
       baseInput.classList.toggle('inherited', isInherited(row.id, year));
     }
 
@@ -2040,7 +2172,7 @@ function recalcMonthlyTable() {
       const val = getMonthlyEffectiveValue(row.id, year, m);
       const input = document.querySelector(`#monthlyBody input[data-row-id="${row.id}"][data-month="${m}"]`);
       if (input && input !== document.activeElement) {
-        input.value = toYen(val);
+        input.value = formatInputYen(val);
         input.classList.toggle('inherited', getMonthlyOverride(row.id, year, m) === undefined);
       }
       if (INCOME_IDS.includes(row.id)) monthIncomeTotals[m] += val;
@@ -2073,9 +2205,14 @@ function recalcAll() {
   ['ageDad','ageMom','ageChild1','ageChild2'].forEach(id => {
     const birthKey = { ageDad: 'birthDad', ageMom: 'birthMom', ageChild1: 'birthChild1', ageChild2: 'birthChild2' }[id];
     const birth = data.births[birthKey];
+    const isChild = (id === 'ageChild1' || id === 'ageChild2');
     years.forEach(year => {
       const td = document.querySelector(`td.age-cell[data-row-id="${id}"][data-year="${year}"]`);
-      if (td) td.textContent = birth ? (year - birth) : '-';
+      if (!td) return;
+      if (!birth) { td.textContent = '-'; return; }
+      const age = year - birth;
+      const grade = isChild ? schoolGrade(age) : '';
+      td.innerHTML = grade ? `${age}<span class="grade">${grade}</span>` : String(age);
     });
   });
 
@@ -2237,6 +2374,27 @@ renderInsuranceSettings();
 renderPensionSettings();
 generateTable();
 generateMonthlyTable();
+applyTimelineView();
+
+// サイドバーの「月次」「年次」で、表示するページ(グリッド)を切り替える。
+// #monthly のときは月次ページ、それ以外は年次ページ(基本情報・チャート・設定を含む)。
+function applyTimelineView() {
+  const view = location.hash === '#monthly' ? 'monthly' : 'yearly';
+  const vm = document.getElementById('viewMonthly');
+  const vy = document.getElementById('viewYearly');
+  if (vm) vm.style.display = view === 'monthly' ? '' : 'none';
+  if (vy) vy.style.display = view === 'monthly' ? 'none' : '';
+  document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('active'));
+  const link = document.querySelector(view === 'monthly' ? '.sidebar a[href$="#monthly"]' : '.sidebar a[href$="#yearly"]');
+  if (link) link.classList.add('active');
+  if (view === 'monthly') {
+    generateMonthlyTable();
+  } else {
+    applyYearlyFreeze();
+  }
+  window.scrollTo(0, 0);
+}
+window.addEventListener('hashchange', applyTimelineView);
 
 // 他タブ(家計簿など)でカテゴリが変更されたら、ストアを再読込して再描画する。
 window.addEventListener('storage', e => {
@@ -2246,6 +2404,7 @@ window.addEventListener('storage', e => {
   renderCategorySettings();
   generateTable();
   generateMonthlyTable();
+  applyYearlyFreeze();
 });
 </script>
 
