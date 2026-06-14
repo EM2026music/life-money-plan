@@ -39,6 +39,19 @@
     margin-bottom: 16px;
   }
   .card h2 { font-size: 15px; margin: 0 0 14px; }
+  .card h2.collapsible-header {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    user-select: none;
+  }
+  .card h2.collapsible-header .section-toggle {
+    font-size: 12px;
+    color: var(--text-light);
+    font-weight: 400;
+  }
+  .collapsible-body.collapsed-section { display: none; }
   .month-nav {
     display: flex;
     align-items: center;
@@ -271,10 +284,12 @@
   </div>
 
   <div class="card">
-    <h2>分類の設定</h2>
-    <p class="empty-note">人生キャッシュフローの支出行と共通の分類です。大項目ごとに分類をまとめたり、大項目を付けずに管理することもできます。ここでの変更は人生キャッシュフロー側にも反映されます。</p>
-    <div id="categoryGroupList"></div>
-    <button class="add-btn" id="addCategoryGroupBtn">+ 大項目を追加</button>
+    <h2 class="collapsible-header" id="categorySettingsHeader">分類の設定 <span class="section-toggle">▶</span></h2>
+    <div id="categorySettingsBody" class="collapsible-body collapsed-section">
+      <p class="empty-note">人生キャッシュフローの支出行と共通の分類です。大項目ごとに分類をまとめたり、大項目を付けずに管理することもできます。ここでの変更は人生キャッシュフロー側にも反映されます。</p>
+      <div id="categoryGroupList"></div>
+      <button class="add-btn" id="addCategoryGroupBtn">+ 大項目を追加</button>
+    </div>
   </div>
 
   <div class="card">
@@ -851,6 +866,13 @@ document.getElementById('addCategoryGroupBtn').addEventListener('click', () => {
   categoryStore.groups.push({ id: 'g' + Date.now() + Math.floor(Math.random() * 10000), name: '新しい大項目' });
   saveCategoryStore(categoryStore);
   renderCategorySettings();
+});
+
+// 「分類の設定」カード全体の開閉。
+document.getElementById('categorySettingsHeader').addEventListener('click', () => {
+  const body = document.getElementById('categorySettingsBody');
+  const collapsed = body.classList.toggle('collapsed-section');
+  document.querySelector('#categorySettingsHeader .section-toggle').textContent = collapsed ? '▶' : '▼';
 });
 
 // --- 人生キャッシュフロー(lifeMoneyTimelineV1)への反映 ---
