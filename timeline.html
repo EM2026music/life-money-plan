@@ -174,7 +174,7 @@
   /* 表のスクロール領域。ここを縦横スクロールしても見出し・項目名が固定される(Excelのウィンドウ枠固定) */
   .grid-scroll {
     overflow: auto;
-    max-height: 80vh;
+    max-height: 88vh;
   }
   table.timeline {
     border-collapse: separate;
@@ -583,7 +583,7 @@
     <div class="grid-scroll">
       <table class="timeline">
         <thead>
-          <tr id="yearHeaderRow"><th class="row-label">項目</th></tr>
+          <tr id="yearHeaderRow"><th class="row-label">西暦</th></tr>
         </thead>
         <tbody id="timelineBody"></tbody>
       </table>
@@ -1801,7 +1801,7 @@ function generateTable() {
   ensureCollapsedExpenseGroups();
 
   const headerRow = document.getElementById('yearHeaderRow');
-  headerRow.innerHTML = '<th class="row-label">項目</th>' +
+  headerRow.innerHTML = '<th class="row-label">西暦</th>' +
     years.map(y => `<th>${y}</th>`).join('');
 
   const body = document.getElementById('timelineBody');
@@ -2456,6 +2456,11 @@ window.addEventListener('storage', e => {
   function unlock() {
     gate.style.display = 'none';
     wrapper.style.display = '';
+    // 認証ゲートで非表示の間に組まれたグリッドは高さ0で固定行のtopが0になっている。
+    // 表示されたこのタイミングで、見出し固定(ウィンドウ枠固定)を計算し直す。
+    if (typeof applyTimelineView === 'function') {
+      requestAnimationFrame(() => applyTimelineView());
+    }
   }
 
   async function tryUnlock() {
