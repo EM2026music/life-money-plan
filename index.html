@@ -288,35 +288,35 @@
     <a href="index.html" class="sidebar-sub active">投資シミュレーション</a>
   </nav>
   <h1>投資シミュレーション</h1>
-  <p class="subtitle">現在の資産とキャッシュフローから、将来の資産推移をシミュレーションします（単位：万円）</p>
+  <p class="subtitle">現在の資産とキャッシュフローから、将来の資産推移をシミュレーションします（単位：円）</p>
 
   <div class="grid">
     <div class="card">
       <h2>現在の資産</h2>
-      <label>現金・預金
-        <input type="number" id="cash" value="300">
+      <label>現金・預金（円）
+        <input type="text" inputmode="numeric" id="cash" value="3000000">
       </label>
-      <label>投資資産（株・投信など）
-        <input type="number" id="invest" value="200">
+      <label>投資資産（株・投信など）（円）
+        <input type="text" inputmode="numeric" id="invest" value="2000000">
       </label>
-      <label>その他資産（不動産など・変動なし）
-        <input type="number" id="other" value="0">
+      <label>その他資産（不動産など・変動なし）（円）
+        <input type="text" inputmode="numeric" id="other" value="0">
       </label>
     </div>
 
     <div class="card">
       <h2>月々のキャッシュフロー</h2>
-      <label>月収入（世帯合計）
-        <input type="number" id="income" value="50">
+      <label>月収入（世帯合計）（円）
+        <input type="text" inputmode="numeric" id="income" value="500000">
       </label>
-      <label>月支出（世帯合計）
-        <input type="number" id="expense" value="38">
+      <label>月支出（世帯合計）（円）
+        <input type="text" inputmode="numeric" id="expense" value="380000">
       </label>
-      <label>ボーナス（年間・世帯合計）
-        <input type="number" id="bonus" value="0">
+      <label>ボーナス（年間・世帯合計）（円）
+        <input type="text" inputmode="numeric" id="bonus" value="0">
       </label>
       <div class="result-line">
-        月々の余剰：<span id="surplus">12.0</span> 万円
+        月々の余剰：<span id="surplus">120,000</span> 円
       </div>
       <label>余剰のうち投資にまわす割合
         <div class="range-row">
@@ -351,15 +351,32 @@
 
 <script>
 const ids = ['cash','invest','other','income','expense','bonus','investRatio','rate','years'];
+const MONEY_IDS = ['cash','invest','other','income','expense','bonus'];
 const STORAGE_KEY = 'lifeMoneyPlanInputs';
+
+// 金額の表示・解析(円・カンマ区切り)
+function fmtMoney(n) { return Math.round(n || 0).toLocaleString(); }
+function parseMoney(id) { return parseFloat(String(document.getElementById(id).value).replace(/[^0-9.\-]/g, '')) || 0; }
 
 function loadInputs() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    // 旧データ(万円)を円へ一度だけ変換
+    if (localStorage.getItem('lifeMoneyPlanYen') !== '1') {
+      if (Object.keys(saved).length) {
+        MONEY_IDS.forEach(id => {
+          if (saved[id] !== undefined) saved[id] = String(Math.round((parseFloat(String(saved[id]).replace(/[^0-9.\-]/g,'')) || 0) * 10000));
+        });
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+      }
+      localStorage.setItem('lifeMoneyPlanYen', '1');
+    }
     ids.forEach(id => {
       if (saved[id] !== undefined) document.getElementById(id).value = saved[id];
     });
   } catch (e) {}
+  // 金額入力をカンマ表示に整える
+  MONEY_IDS.forEach(id => { document.getElementById(id).value = fmtMoney(parseMoney(id)); });
 }
 
 function saveInputs() {
@@ -371,18 +388,18 @@ function saveInputs() {
 let chart;
 
 function calculate() {
-  const cash0 = parseFloat(document.getElementById('cash').value) || 0;
-  const invest0 = parseFloat(document.getElementById('invest').value) || 0;
-  const other = parseFloat(document.getElementById('other').value) || 0;
-  const income = parseFloat(document.getElementById('income').value) || 0;
-  const expense = parseFloat(document.getElementById('expense').value) || 0;
-  const bonus = parseFloat(document.getElementById('bonus').value) || 0;
+  const cash0 = parseMoney('cash');
+  const invest0 = parseMoney('invest');
+  const other = parseMoney('other');
+  const income = parseMoney('income');
+  const expense = parseMoney('expense');
+  const bonus = parseMoney('bonus');
   const investRatio = parseFloat(document.getElementById('investRatio').value) / 100;
   const rate = (parseFloat(document.getElementById('rate').value) || 0) / 100;
   const years = parseInt(document.getElementById('years').value) || 0;
 
   const surplus = income - expense;
-  document.getElementById('surplus').textContent = surplus.toFixed(1);
+  document.getElementById('surplus').textContent = fmtMoney(surplus);
   document.getElementById('investRatioVal').textContent = Math.round(investRatio * 100);
 
   const annualSurplus = surplus * 12 + bonus;
@@ -456,14 +473,14 @@ function renderChart(labels, cashData, investData, totalData) {
           y: {
             stacked: false,
             ticks: {
-              callback: v => v.toLocaleString() + '万円'
+              callback: v => v.toLocaleString() + '円'
             }
           }
         },
         plugins: {
           tooltip: {
             callbacks: {
-              label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString()}万円`
+              label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString()}円`
             }
           }
         }
@@ -474,7 +491,7 @@ function renderChart(labels, cashData, investData, totalData) {
 
 function renderSummary(cashData, investData, totalData, years) {
   const last = cashData.length - 1;
-  const fmt = v => v.toLocaleString() + ' 万円';
+  const fmt = v => v.toLocaleString() + ' 円';
   document.getElementById('summary').innerHTML = `
     <div class="summary-item cash">
       <div class="label">${years}年後の現金・預金</div>
@@ -497,6 +514,12 @@ ids.forEach(id => {
   if (el.type === 'number') {
     el.addEventListener('wheel', () => el.blur());
   }
+});
+// 金額入力: フォーカス時は数字のみ・離れたらカンマ表示
+MONEY_IDS.forEach(id => {
+  const el = document.getElementById(id);
+  el.addEventListener('focus', () => { el.value = String(el.value).replace(/[,，\s]/g, ''); el.select(); });
+  el.addEventListener('blur', () => { el.value = fmtMoney(parseMoney(id)); });
 });
 
 loadInputs();

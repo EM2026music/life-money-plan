@@ -90,6 +90,36 @@
   .quick-links a span { display: block; font-size: 12px; font-weight: 400; color: var(--text-light); margin-top: 4px; }
   .note { font-size: 12px; color: var(--text-light); margin-top: 12px; line-height: 1.6; }
 
+  /* バックアップのおすすめ表示 */
+  .backup-reminder {
+    background: #fff7e6;
+    border: 1px solid #ffd591;
+    color: #8a5a00;
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-bottom: 16px;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .backup-reminder .br-link {
+    color: var(--accent);
+    font-weight: 700;
+    text-decoration: none;
+  }
+  .backup-reminder .br-link:hover { text-decoration: underline; }
+  .backup-reminder .br-close {
+    margin-left: auto;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
+    color: #8a5a00;
+  }
+
   /* 左サイドバー(常時表示ナビ) */
   .sidebar {
     position: fixed;
@@ -223,6 +253,12 @@
   <h1>デザイン４ライフ</h1>
   <p class="subtitle">人生で何がいつ起きて、そのときお金がどうなるかを一枚で見るためのツール。</p>
 
+  <div id="backupReminder" class="backup-reminder" style="display:none">
+    <span id="backupReminderText"></span>
+    <a href="timeline.html#yearly" class="br-link">→ 年次タイムラインの「設定 → データのバックアップ」へ</a>
+    <button type="button" id="backupReminderClose" class="br-close" title="閉じる">×</button>
+  </div>
+
   <div class="card">
     <h2>基本情報</h2>
     <div class="settings-grid">
@@ -328,6 +364,33 @@ function initBasicInfo() {
 }
 
 initBasicInfo();
+
+// --- バックアップのおすすめ(自動ナッジ) ---
+// アプリは入力のたびにブラウザへ自動保存されますが、ブラウザのデータを消すと失われます。
+// データがあるのに長期間バックアップしていなければ、保存をそっとおすすめします。
+function hasUserData() {
+  try {
+    const t = JSON.parse(localStorage.getItem('lifeMoneyTimelineV1') || '{}');
+    if (t.cells && Object.keys(t.cells).length) return true;
+    if (t.monthlyCells && Object.keys(t.monthlyCells).length) return true;
+    const k = JSON.parse(localStorage.getItem('lifeMoneyKakeiboV1') || '{}');
+    if (k.months && Object.keys(k.months).length) return true;
+  } catch (e) {}
+  return false;
+}
+function checkBackupReminder() {
+  if (!hasUserData()) return;
+  const last = parseInt(localStorage.getItem('lifeMoneyLastBackup') || '0', 10);
+  const days = last ? Math.floor((Date.now() - last) / 86400000) : null;
+  if (last && days < 14) return;
+  const el = document.getElementById('backupReminder');
+  document.getElementById('backupReminderText').textContent = last
+    ? `💾 前回のバックアップから${days}日。念のためデータの保存をおすすめします`
+    : '💾 まだバックアップしていません。データ消失に備えて保存をおすすめします';
+  el.style.display = 'flex';
+  document.getElementById('backupReminderClose').addEventListener('click', () => { el.style.display = 'none'; });
+}
+checkBackupReminder();
 </script>
 
 <script>

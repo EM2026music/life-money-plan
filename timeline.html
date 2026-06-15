@@ -703,7 +703,9 @@ const EVENT_ROWS = [
 function buildIncomeRows() {
   const rows = [{ section: '収入（円/年）' }];
   data.incomeItems.forEach(it => {
-    rows.push({ id: it.id, label: it.name, type: 'editable', default: 0, forwardFill: 'full', incItem: it.id });
+    // 保険受取は一時金(満期金など)が多いので継続しない。それ以外の収入は入れた年以降ずっと継続。
+    const oneTime = it.id === 'incomeInsurance';
+    rows.push({ id: it.id, label: it.name, type: 'editable', default: 0, forwardFill: oneTime ? 'none' : 'full', incItem: it.id });
   });
   rows.push({ id: 'incomeTotal', label: '収入合計', type: 'computed' });
   return rows;
@@ -1688,6 +1690,7 @@ document.getElementById('exportDataBtn').addEventListener('click', () => {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+  localStorage.setItem('lifeMoneyLastBackup', String(Date.now()));
 });
 
 document.getElementById('importDataBtn').addEventListener('click', () => {
@@ -2138,9 +2141,9 @@ function onCellInput(e) {
   const row = ROWS.find(r => r.id === rowId);
   const value = row.type === 'text' ? e.target.value : parseYenInput(e.target.value);
   setCellValue(rowId, year, value);
-  // フォワードフィル対象の行は、編集した年より後ろの明示値・月別上書きをすべてクリアし、
-  // 「編集した年からそれ以降ずっとこの値」になるようにする（後ろに古い値が残っていても確実に追従）。
-  if (row.forwardFill) clearCellsAfter(rowId, year);
+  // 継続(forwardFill:'full')の行だけ、編集年より後ろをクリアして「以降ずっとこの値」にする。
+  // 一時金(forwardFill:'none'。保険受取など)は各年が独立なので後ろをクリアしない。
+  if (row.forwardFill === 'full') clearCellsAfter(rowId, year);
   saveData();
   recalcAll();
 }
