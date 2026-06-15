@@ -656,14 +656,6 @@
   </div>
 
   <div class="card">
-    <h2 class="collapsible-header" data-collapse-target="pensionSettingsBody">年金の設定 <span class="section-toggle">▶</span></h2>
-    <div id="pensionSettingsBody" class="collapsible-body collapsed-section">
-      <p class="empty-note">受給開始年齢になった年から、年額が「年金」(収入)に自動加算されます。年齢は「基本情報」の生年から計算されます。年額が0の人は無効です。</p>
-      <div id="pensionList"></div>
-    </div>
-  </div>
-
-  <div class="card">
     <h2 class="collapsible-header" data-collapse-target="resetSettingsBody">初期化 <span class="section-toggle">▶</span></h2>
     <div id="resetSettingsBody" class="collapsible-body collapsed-section">
       <p class="empty-note">分類(大項目・項目)を初期状態に戻します。<strong>入力した金額データは消えません</strong>(各項目に入れた金額はそのまま保持されます)。分類をいじりすぎて元に戻したいときに使ってください。</p>
@@ -713,9 +705,7 @@ function buildIncomeRows() {
   data.incomeItems.forEach(it => {
     rows.push({ id: it.id, label: it.name, type: 'editable', default: 0, forwardFill: 'full', incItem: it.id });
   });
-  rows.push({ id: 'incomePension',   label: '年金',     type: 'computed' });
-  rows.push({ id: 'incomeInsurance', label: '保険受取', type: 'computed' });
-  rows.push({ id: 'incomeTotal',     label: '収入合計', type: 'computed' });
+  rows.push({ id: 'incomeTotal', label: '収入合計', type: 'computed' });
   return rows;
 }
 
@@ -755,6 +745,8 @@ function defaultData() {
       { id: 'incomeDad', name: 'パパ収入' },
       { id: 'incomeMom', name: 'ママ収入' },
       { id: 'incomeOther', name: 'その他収入' },
+      { id: 'incomePension', name: '年金' },
+      { id: 'incomeInsurance', name: '保険受取' },
     ],
   };
 }
@@ -964,6 +956,19 @@ function migrateData() {
     });
     if (storeChanged) saveCategoryStore(categoryStore);
     data.migratedExpenseCategories = true;
+    ROWS = buildRows();
+    changed = true;
+  }
+
+  // 年金・保険受取を「直接入力できる収入項目」に移行(既存ユーザーにも一度だけ追加)。
+  if (!data.migratedIncomePensionPayout) {
+    if (!data.incomeItems.some(it => it.id === 'incomePension')) {
+      data.incomeItems.push({ id: 'incomePension', name: '年金' });
+    }
+    if (!data.incomeItems.some(it => it.id === 'incomeInsurance')) {
+      data.incomeItems.push({ id: 'incomeInsurance', name: '保険受取' });
+    }
+    data.migratedIncomePensionPayout = true;
     ROWS = buildRows();
     changed = true;
   }
@@ -1526,7 +1531,7 @@ function renderInsuranceSettings() {
   if (data.insurances.length === 0) {
     const p = document.createElement('p');
     p.className = 'empty-note';
-    p.textContent = '生命保険・学資保険などを登録すると、タイムラインに「○○ 保険料」の行が追加され、支出合計に統合されます。受取年・受取額を指定すると、その年の「保険受取」として収入合計に加算されます。';
+    p.textContent = '生命保険・学資保険などを登録すると、タイムラインに「○○ 保険料」の行が追加され、毎年の保険料を入力できます(支出合計に統合)。名前は保険料の行からも変更できます。';
     container.appendChild(p);
   }
 
@@ -1535,8 +1540,6 @@ function renderInsuranceSettings() {
     row.className = 'investment-row';
     row.innerHTML = `
       <input type="text" class="inv-name ins-field" value="${ins.name}" data-id="${ins.id}" data-field="name">
-      <label>受取年(なければ空欄)<input type="number" class="ins-field" value="${ins.payoutYear ?? ''}" data-id="${ins.id}" data-field="payoutYear"></label>
-      <label>受取額(円)<input type="number" class="ins-field" value="${toYen(ins.payoutAmount)}" data-id="${ins.id}" data-field="payoutAmount"></label>
       <button class="del-investment-btn ins-del" data-id="${ins.id}">削除</button>
     `;
     container.appendChild(row);
@@ -1546,23 +1549,12 @@ function renderInsuranceSettings() {
     el.addEventListener('input', e => {
       const ins = data.insurances.find(x => x.id === e.target.dataset.id);
       if (!ins) return;
-      const field = e.target.dataset.field;
-      if (field === 'name') {
-        ins.name = e.target.value;
-        saveData();
-        ROWS = buildRows();
-        generateTable();
-        generateMonthlyTable();
-        return;
-      } else if (field === 'payoutYear') {
-        ins.payoutYear = e.target.value === '' ? null : (parseInt(e.target.value) || null);
-      } else if (field === 'payoutAmount') {
-        ins.payoutAmount = fromYen(parseFloat(e.target.value) || 0);
-      }
+      ins.name = e.target.value;
       saveData();
-      recalcAll();
+      ROWS = buildRows();
+      generateTable();
+      generateMonthlyTable();
     });
-    if (el.type === 'number') el.addEventListener('wheel', () => el.blur());
   });
   container.querySelectorAll('.ins-del').forEach(el => {
     el.addEventListener('click', e => {
@@ -2474,19 +2466,14 @@ function recalcAll() {
   const cashArr = [], investArr = [], totalArr = [];
 
   years.forEach(year => {
-    const insurancePayout = insurancePayoutTotal(year);
-    const pension = pensionForYear(year);
-    const incomeTotal = incomeItemIds().reduce((s, id) => s + getYearlyEffectiveValue(id, year), 0) + insurancePayout + pension;
+    // 年金・保険受取は収入項目(直接入力)になったので incomeItemIds() に含まれる。
+    const incomeTotal = incomeItemIds().reduce((s, id) => s + getYearlyEffectiveValue(id, year), 0);
     const eventCost = lifeEventCost(year);
     const insurancePremium = insurancePremiumTotal(year);
     const expCategoryTotal = expenseCategoryRows().reduce((s, r) => s + getYearlyEffectiveValue(r.id, year), 0);
     const expTotal = expCategoryTotal + eventCost + insurancePremium;
     const balance = incomeTotal - expTotal;
 
-    setComputedCell('expEvent', year, eventCost);
-    setComputedCell('expInsurance', year, insurancePremium);
-    setComputedCell('incomePension', year, pension);
-    setComputedCell('incomeInsurance', year, insurancePayout);
     const evInput = document.querySelector(`#timelineBody input[data-row-id="event"][data-year="${year}"]`);
     if (evInput && evInput !== document.activeElement) evInput.value = lifeEventNames(year);
 
