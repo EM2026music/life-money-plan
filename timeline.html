@@ -373,13 +373,51 @@
   }
   .row-label:hover .reset-btn { opacity: 1; }
   .reset-btn:hover { color: var(--accent); }
-  .summary {
-    margin-top: 14px;
-    font-size: 14px;
-    line-height: 1.7;
+  .summary { margin-top: 16px; }
+  /* 色付きKPIタイル */
+  .kpi-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 10px;
+    margin-bottom: 10px;
   }
-  .summary strong { color: var(--accent); }
-  .summary strong.negative { color: var(--neg); }
+  .kpi-section-label {
+    flex: 0 0 100%;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-light);
+    margin: 4px 0 2px;
+  }
+  .kpi {
+    flex: 1;
+    min-width: 120px;
+    border-radius: 12px;
+    padding: 12px 14px;
+    background: #f6fafc;
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--text-light);
+  }
+  .kpi-label { font-size: 12px; color: var(--text-light); margin-bottom: 4px; }
+  .kpi-value { font-size: 19px; font-weight: 800; color: var(--text); letter-spacing: .01em; }
+  .kpi-unit { font-size: 12px; font-weight: 600; color: var(--text-light); }
+  .kpi.income { border-left-color: #4caf7d; background: #f1faf5; }
+  .kpi.income .kpi-value { color: #2f8d5e; }
+  .kpi.expense { border-left-color: #e2746b; background: #fdf3f2; }
+  .kpi.expense .kpi-value { color: #c4564c; }
+  .kpi.balance.pos { border-left-color: var(--accent); background: #eef8fc; }
+  .kpi.balance.pos .kpi-value { color: var(--accent); }
+  .kpi.balance.neg { border-left-color: var(--neg); background: #fdf3f2; }
+  .kpi.balance.neg .kpi-value { color: var(--neg); }
+  .kpi.total { border-left-color: #2c6b7a; background: #eef6f8; }
+  .kpi.total .kpi-value { color: #2c6b7a; }
+  .kpi.cash { border-left-color: var(--accent); background: #eef8fc; }
+  .kpi.cash .kpi-value { color: var(--accent); }
+  .kpi.invest { border-left-color: #4caf7d; background: #f1faf5; }
+  .kpi.invest .kpi-value { color: #2f8d5e; }
+  .kpi-note { font-size: 13px; margin-top: 4px; }
+  .kpi-note .ok { color: #2f8d5e; }
+  .kpi-note .warn { color: var(--neg); }
   .note {
     font-size: 12px;
     color: var(--text-light);
@@ -387,6 +425,8 @@
     line-height: 1.6;
   }
   .chart-card canvas { max-height: 320px; }
+  .donut-wrap { max-width: 460px; margin: 4px auto 0; }
+  .donut-card canvas { max-height: 280px; }
 
   .investment-row {
     display: flex;
@@ -622,6 +662,12 @@
     <h2>総資産の推移</h2>
     <canvas id="assetChart"></canvas>
     <div class="summary" id="summary"></div>
+  </div>
+
+  <div class="card donut-card">
+    <h2 id="donutTitle">支出内訳</h2>
+    <div class="donut-wrap"><canvas id="expenseDonut"></canvas></div>
+    <p id="donutEmpty" class="empty-note" style="display:none">支出を入力すると、ここに大項目ごとの内訳が表示されます。</p>
   </div>
 
   <h2 class="settings-section-title">設定</h2>
@@ -2480,6 +2526,7 @@ function recalcAll() {
   data.investments.forEach(inv => { prevBalances[inv.id] = inv.initialBalance; });
 
   const cashArr = [], investArr = [], totalArr = [];
+  let firstYearStats = null;
 
   years.forEach(year => {
     // 年金・保険受取は収入項目(直接入力)になったので incomeItemIds() に含まれる。
@@ -2489,6 +2536,7 @@ function recalcAll() {
     const expCategoryTotal = expenseCategoryRows().reduce((s, r) => s + getYearlyEffectiveValue(r.id, year), 0);
     const expTotal = expCategoryTotal + eventCost + insurancePremium;
     const balance = incomeTotal - expTotal;
+    if (year === years[0]) firstYearStats = { year, income: incomeTotal, expense: expTotal, balance };
 
     const evInput = document.querySelector(`#timelineBody input[data-row-id="event"][data-year="${year}"]`);
     if (evInput && evInput !== document.activeElement) evInput.value = lifeEventNames(year);
@@ -2533,7 +2581,8 @@ function recalcAll() {
 
   updateInputCells(years);
   updateChart(years, cashArr, investArr, totalArr);
-  updateSummary(years, cashArr, investArr, totalArr);
+  updateSummary(years, cashArr, investArr, totalArr, firstYearStats);
+  updateExpenseDonut(years[0]);
   recalcMonthlyTable();
 }
 
@@ -2598,25 +2647,103 @@ function updateChart(years, cashArr, investArr, totalArr) {
   }
 }
 
-function updateSummary(years, cashArr, investArr, totalArr) {
+function updateSummary(years, cashArr, investArr, totalArr, firstYear) {
+  const lastYear = years[years.length - 1];
   const last = totalArr[totalArr.length - 1];
   const lastCash = cashArr[cashArr.length - 1];
   const lastInvest = investArr[investArr.length - 1];
   const negIndex = totalArr.findIndex(v => v < 0);
   const summary = document.getElementById('summary');
+  const fy = firstYear || { year: years[0], income: 0, expense: 0, balance: 0 };
+
+  const sign = v => (v >= 0 ? '+' : '−') + formatYen(Math.abs(v));
+  const tile = (cls, label, value, sub) =>
+    `<div class="kpi ${cls}"><div class="kpi-label">${label}</div><div class="kpi-value">${value}<span class="kpi-unit"> 円</span></div>${sub ? `<div class="kpi-sub">${sub}</div>` : ''}</div>`;
 
   let negLine;
   if (negIndex === -1) {
-    negLine = `${data.startYear}〜${years[years.length-1]}年の間、総資産はマイナスになりません。`;
+    negLine = `<span class="ok">✓ ${fy.year}〜${lastYear}年の間、総資産はマイナスになりません。</span>`;
   } else {
-    negLine = `<strong class="negative">${years[negIndex]}年</strong>に総資産がマイナスになる見込みです。`;
+    negLine = `<span class="warn">⚠ <strong>${years[negIndex]}年</strong>に総資産がマイナスになる見込みです。</span>`;
   }
 
   summary.innerHTML = `
-    ${years[years.length-1]}年時点の総資産：<strong>${formatYen(last)} 円</strong>
-    （現金資産 ${formatYen(lastCash)} 円 + 投資資産 ${formatYen(lastInvest)} 円）<br>
-    ${negLine}
+    <div class="kpi-row">
+      <div class="kpi-section-label">${fy.year}年(今年)</div>
+      ${tile('income', '収入', formatYen(fy.income))}
+      ${tile('expense', '支出', formatYen(fy.expense))}
+      ${tile('balance ' + (fy.balance < 0 ? 'neg' : 'pos'), '収支', sign(fy.balance))}
+    </div>
+    <div class="kpi-row">
+      <div class="kpi-section-label">${lastYear}年(${lastYear - fy.year}年後)</div>
+      ${tile('total', '総資産', formatYen(last))}
+      ${tile('cash', '現金資産', formatYen(lastCash))}
+      ${tile('invest', '投資資産', formatYen(lastInvest))}
+    </div>
+    <div class="kpi-note">${negLine}</div>
   `;
+}
+
+// 大項目ごとの色(ドーナツ・凡例で共通利用)
+const GROUP_PALETTE = ['#38b6d3','#4caf7d','#f5a623','#e2746b','#9b6dd6','#5b8def','#3fc1a3','#e289b8','#c0a35e','#7a8aa0','#d98be2','#6dc36d'];
+function paletteColor(i) { return GROUP_PALETTE[i % GROUP_PALETTE.length]; }
+
+let expenseDonut;
+// 指定年の支出内訳(大項目別+未分類+イベント+保険料)をドーナツで表示。
+function updateExpenseDonut(year) {
+  const canvas = document.getElementById('expenseDonut');
+  if (!canvas || typeof Chart === 'undefined') return;
+  const labels = [], values = [], colors = [];
+  let ci = 0;
+  categoryStore.groups.forEach(group => {
+    const cats = categoryStore.categories.filter(c => c.groupId === group.id);
+    let sum;
+    if (cats.length) sum = cats.reduce((s, c) => s + getYearlyEffectiveValue(`cat_${c.id}`, year), 0);
+    else sum = getYearlyEffectiveValue(`catgrp_${group.id}`, year);
+    if (sum > 0) { labels.push(group.name); values.push(toYen(sum)); colors.push(paletteColor(ci)); }
+    ci++;
+  });
+  // 未分類の分類
+  const ungrouped = categoryStore.categories.filter(c => !c.groupId);
+  let ungroupedSum = ungrouped.reduce((s, c) => s + getYearlyEffectiveValue(`cat_${c.id}`, year), 0);
+  if (ungroupedSum > 0) { labels.push('未分類'); values.push(toYen(ungroupedSum)); colors.push(paletteColor(ci++)); }
+  // イベント費・保険料
+  const ev = lifeEventCost(year); if (ev > 0) { labels.push('イベント費'); values.push(toYen(ev)); colors.push(paletteColor(ci++)); }
+  const ins = insurancePremiumTotal(year); if (ins > 0) { labels.push('保険料'); values.push(toYen(ins)); colors.push(paletteColor(ci++)); }
+
+  const titleEl = document.getElementById('donutTitle');
+  if (titleEl) titleEl.textContent = `${year}年の支出内訳`;
+  const emptyEl = document.getElementById('donutEmpty');
+  if (!values.length) {
+    if (emptyEl) emptyEl.style.display = '';
+    canvas.style.display = 'none';
+    if (expenseDonut) { expenseDonut.destroy(); expenseDonut = null; }
+    return;
+  }
+  if (emptyEl) emptyEl.style.display = 'none';
+  canvas.style.display = '';
+
+  const data = {
+    labels,
+    datasets: [{ data: values, backgroundColor: colors, borderColor: '#fff', borderWidth: 2 }],
+  };
+  if (expenseDonut) {
+    expenseDonut.data = data;
+    expenseDonut.update();
+  } else {
+    expenseDonut = new Chart(canvas.getContext('2d'), {
+      type: 'doughnut',
+      data,
+      options: {
+        responsive: true,
+        cutout: '62%',
+        plugins: {
+          legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } },
+          tooltip: { callbacks: { label: c => `${c.label}: ${c.parsed.toLocaleString()}円` } },
+        },
+      },
+    });
+  }
 }
 
 migrateData();
