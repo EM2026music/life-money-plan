@@ -1018,11 +1018,15 @@ function buildExpenseCategoryRows() {
   const rows = [];
   categoryStore.groups.forEach(group => {
     const cats = categoryStore.categories.filter(c => c.groupId === group.id);
-    if (!cats.length) return;
-    rows.push({ id: `catgrp_${group.id}`, label: group.name, type: 'computed', groupId: group.id });
-    cats.forEach(cat => {
-      rows.push({ id: `cat_${cat.id}`, label: `　${cat.name}`, type: 'editable', default: 0, forwardFill: 'full', catId: cat.id, groupId: group.id });
-    });
+    if (cats.length) {
+      rows.push({ id: `catgrp_${group.id}`, label: group.name, type: 'computed', groupId: group.id });
+      cats.forEach(cat => {
+        rows.push({ id: `cat_${cat.id}`, label: `　${cat.name}`, type: 'editable', default: 0, forwardFill: 'full', catId: cat.id, groupId: group.id });
+      });
+    } else {
+      // 小項目が無い大項目は、その行に直接金額を入力できる(編集可能・合計にも算入)。
+      rows.push({ id: `catgrp_${group.id}`, label: group.name, type: 'editable', default: 0, forwardFill: 'full', groupId: group.id, grpDirect: group.id });
+    }
   });
   categoryStore.categories.filter(c => !c.groupId).forEach(cat => {
     rows.push({ id: `cat_${cat.id}`, label: cat.name, type: 'editable', default: 0, forwardFill: 'full', catId: cat.id, groupId: null });
@@ -1030,9 +1034,9 @@ function buildExpenseCategoryRows() {
   return rows;
 }
 
-// 支出の分類行（leaf）一覧。
+// 支出の合計に算入する行(小項目 leaf + 小項目を持たない大項目の直接入力行)。
 function expenseCategoryRows() {
-  return ROWS.filter(r => r.catId !== undefined);
+  return ROWS.filter(r => r.catId !== undefined || r.grpDirect !== undefined);
 }
 
 function buildRows() {
@@ -1767,13 +1771,16 @@ function deleteGroupInline(groupId) {
 // 支出の分類行・大項目行のラベルセル(編集入力+削除ボタン)を組み立てる。
 function buildEditableCategoryLabel(labelTd, row) {
   if (row.id.startsWith('catgrp_')) {
-    const collapsed = collapsedExpenseGroups.has(row.groupId);
-    const toggle = document.createElement('button');
-    toggle.type = 'button';
-    toggle.className = 'row-group-toggle';
-    toggle.dataset.groupId = row.groupId;
-    toggle.textContent = collapsed ? '▶' : '▼';
-    labelTd.appendChild(toggle);
+    // 小項目を持つ大項目だけ開閉トグルを出す。小項目の無い大項目(直接入力)はトグル無し。
+    if (!row.grpDirect) {
+      const collapsed = collapsedExpenseGroups.has(row.groupId);
+      const toggle = document.createElement('button');
+      toggle.type = 'button';
+      toggle.className = 'row-group-toggle';
+      toggle.dataset.groupId = row.groupId;
+      toggle.textContent = collapsed ? '▶' : '▼';
+      labelTd.appendChild(toggle);
+    }
 
     const nameInput = document.createElement('input');
     nameInput.type = 'text';
@@ -2067,7 +2074,7 @@ function generateMonthlyTable() {
     const tr = document.createElement('tr');
     tr.dataset.rowId = row.id;
 
-    if (row.id.startsWith('catgrp_')) {
+    if (row.id.startsWith('catgrp_') && !row.grpDirect) {
       tr.className = 'computed-row';
       const labelTd = document.createElement('td');
       labelTd.className = 'row-label';
@@ -2099,8 +2106,8 @@ function generateMonthlyTable() {
 
     const labelTd = document.createElement('td');
     labelTd.className = 'row-label';
-    if (row.catId !== undefined) {
-      // 支出の分類行: 年次と同じく名前をその場で編集・削除できる + リセット
+    if (row.catId !== undefined || row.grpDirect) {
+      // 支出の分類行・直接入力の大項目: 名前をその場で編集・削除できる + リセット
       buildEditableCategoryLabel(labelTd, row);
     } else {
       labelTd.appendChild(document.createTextNode(row.label));
@@ -2229,7 +2236,7 @@ function recalcMonthlyTable() {
   const groupMonthTotals = {};
 
   getMonthlyRows().forEach(row => {
-    if (row.id.startsWith('catgrp_')) return;
+    if (row.id.startsWith('catgrp_') && !row.grpDirect) return;
 
     const baseInput = document.querySelector(`#monthlyBody input.base-input[data-row-id="${row.id}"]`);
     if (baseInput && baseInput !== document.activeElement) {
@@ -2253,7 +2260,7 @@ function recalcMonthlyTable() {
         input.classList.toggle('inherited', getMonthlyOverride(row.id, year, m) === undefined);
       }
       if (INCOME_IDS.includes(row.id)) monthIncomeTotals[m] += val;
-      if (row.catId !== undefined || row.insId !== undefined) monthExpenseTotals[m] += val;
+      if (row.catId !== undefined || row.insId !== undefined || row.grpDirect !== undefined) monthExpenseTotals[m] += val;
       if (row.catId !== undefined && row.groupId) groupMonthTotals[row.groupId][m] += val;
     }
   });
