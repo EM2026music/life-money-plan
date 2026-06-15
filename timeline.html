@@ -345,6 +345,8 @@
   }
   .birth-inline:focus { outline: none; border-color: var(--accent); }
   tr.computed-row td.computed-cell { font-weight: 700; background: #f7f9fb; }
+  tr.total-row td { border-top: 2px solid var(--accent-line); }
+  tr.total-row .row-label { color: var(--accent); }
   .computed-cell.negative { color: var(--neg); }
   .copy-btn {
     background: none;
@@ -1948,6 +1950,36 @@ function deleteInsuranceInline(id) {
   renderInsuranceSettings();
 }
 
+// --- 投資のグリッド上での改名・削除 ---
+function renameInvestmentInline(id, name) {
+  const inv = data.investments.find(x => x.id === id);
+  if (!inv) return;
+  const trimmed = (name || '').trim();
+  if (!trimmed || trimmed === inv.name) { generateTable(); generateMonthlyTable(); return; }
+  inv.name = trimmed;
+  saveData();
+  ROWS = buildRows();
+  generateTable();
+  generateMonthlyTable();
+  renderInvestmentSettings();
+}
+
+function deleteInvestmentInline(id) {
+  const inv = data.investments.find(x => x.id === id);
+  if (!inv) return;
+  if (!confirm(`投資「${inv.name}」を削除します。よろしいですか?\n(この投資に入力した金額も削除されます)`)) return;
+  data.investments = data.investments.filter(x => x.id !== id);
+  ['inv_' + id + '_contrib', 'inv_' + id + '_balance'].forEach(rid => {
+    delete data.cells[rid];
+    delete data.monthlyCells[rid];
+  });
+  saveData();
+  ROWS = buildRows();
+  generateTable();
+  generateMonthlyTable();
+  renderInvestmentSettings();
+}
+
 // 支出の分類行・大項目行のラベルセル(編集入力+削除ボタン)を組み立てる。
 function buildEditableCategoryLabel(labelTd, row) {
   if (row.id.startsWith('catgrp_')) {
@@ -2020,6 +2052,29 @@ function buildEditableCategoryLabel(labelTd, row) {
     return;
   }
 
+  // 投資項目: 名前をその場で編集・削除(「○○ 投資額」の○○部分)
+  if (row.invId) {
+    const inv = data.investments.find(x => x.id === row.invId);
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.className = 'label-edit-input';
+    nameInput.value = inv ? inv.name : row.label.replace(/ ?投資額$/, '');
+    nameInput.addEventListener('change', e => renameInvestmentInline(row.invId, e.target.value));
+    labelTd.appendChild(nameInput);
+    const suffix = document.createElement('span');
+    suffix.className = 'label-suffix';
+    suffix.textContent = '投資額';
+    labelTd.appendChild(suffix);
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'label-del-btn';
+    del.title = 'この投資を削除';
+    del.textContent = '✕';
+    del.addEventListener('click', () => deleteInvestmentInline(row.invId));
+    labelTd.appendChild(del);
+    return;
+  }
+
   const cat = categoryStore.categories.find(c => c.id === row.catId);
   const nameInput = document.createElement('input');
   nameInput.type = 'text';
@@ -2074,7 +2129,7 @@ function generateTable() {
 
     const labelTd = document.createElement('td');
     labelTd.className = 'row-label';
-    if (row.id.startsWith('catgrp_') || row.catId !== undefined || row.incItem || row.insId) {
+    if (row.id.startsWith('catgrp_') || row.catId !== undefined || row.incItem || row.insId || (row.invId && row.id.endsWith('_contrib'))) {
       buildEditableCategoryLabel(labelTd, row);
     } else if (row.type === 'age' && row.birth) {
       // 名前 + 生まれ年の直接入力(基本情報を開かなくてもここで変更できる)
@@ -2298,11 +2353,13 @@ function generateMonthlyTable() {
     const isMonthly = (row.type === 'editable' && row.forwardFill !== undefined) || (row.id && row.id.startsWith('catgrp_'));
     if (!isMonthly) return;
     if (pendingSection) {
+      const name = pendingSection.replace(/（.*?）/, '');
       const sectr = document.createElement('tr');
       sectr.className = 'section-row';
+      sectr.dataset.msection = name;
       const sectd = document.createElement('td');
       sectd.colSpan = 14;
-      sectd.textContent = pendingSection.replace(/（.*?）/, '');
+      sectd.textContent = name;
       sectr.appendChild(sectd);
       body.appendChild(sectr);
       pendingSection = null;
@@ -2343,8 +2400,8 @@ function generateMonthlyTable() {
 
     const labelTd = document.createElement('td');
     labelTd.className = 'row-label';
-    if (row.catId !== undefined || row.grpDirect || row.incItem || row.insId) {
-      // 分類・直接入力大項目・収入項目・保険: 名前をその場で編集・削除できる + リセット
+    if (row.catId !== undefined || row.grpDirect || row.incItem || row.insId || (row.invId && row.id.endsWith('_contrib'))) {
+      // 分類・直接入力大項目・収入項目・保険・投資: 名前をその場で編集・削除できる + リセット
       buildEditableCategoryLabel(labelTd, row);
     } else {
       labelTd.appendChild(document.createTextNode(row.label));
@@ -2388,9 +2445,10 @@ function generateMonthlyTable() {
     body.appendChild(tr);
   });
 
-  Object.keys(MONTHLY_TOTAL_LABELS).forEach(id => {
+  // 合計行を作るヘルパー。
+  function makeMonthlyTotalRow(id) {
     const tr = document.createElement('tr');
-    tr.className = 'computed-row';
+    tr.className = 'computed-row total-row';
     tr.dataset.rowId = id;
     const labelTd = document.createElement('td');
     labelTd.className = 'row-label';
@@ -2406,8 +2464,16 @@ function generateMonthlyTable() {
       td.dataset.month = m;
       tr.appendChild(td);
     }
-    body.appendChild(tr);
-  });
+    return tr;
+  }
+  // 年次にならい、月間収入合計は収入の直後、月間支出合計は支出(+保険)の直後、月間収支は最後に置く。
+  const expSec = body.querySelector('tr.section-row[data-msection="支出"]');
+  const incTotalRow = makeMonthlyTotalRow('monthIncomeTotal');
+  if (expSec) body.insertBefore(incTotalRow, expSec); else body.appendChild(incTotalRow);
+  const invSec = body.querySelector('tr.section-row[data-msection="投資資産"]');
+  const expTotalRow = makeMonthlyTotalRow('monthExpenseTotal');
+  if (invSec) body.insertBefore(expTotalRow, invSec); else body.appendChild(expTotalRow);
+  body.appendChild(makeMonthlyTotalRow('monthBalance'));
 
   body.querySelectorAll('.row-group-toggle').forEach(btn => {
     btn.addEventListener('click', () => toggleExpenseGroup(btn.dataset.groupId));
