@@ -264,6 +264,7 @@
   }
   .row-label:hover .label-del-btn { opacity: 1; }
   .label-del-btn:hover { color: var(--neg); }
+  .label-suffix { font-size: 10px; color: var(--text-light); margin-left: 2px; font-weight: 400; }
   tr.section-row td {
     background: var(--section-bg);
     font-weight: 700;
@@ -612,7 +613,16 @@
   <h2 class="settings-section-title">設定</h2>
 
   <div class="card">
-    <h2 class="collapsible-header" data-collapse-target="categorySettingsBody">分類の設定 <span class="section-toggle">▶</span></h2>
+    <h2 class="collapsible-header" data-collapse-target="incomeSettingsBody">収入項目の設定 <span class="section-toggle">▶</span></h2>
+    <div id="incomeSettingsBody" class="collapsible-body collapsed-section">
+      <p class="empty-note">収入の項目(パパ収入・副業など)を自由に追加・変更・削除できます。各項目の金額は年次・月次のグリッドで入力します。グリッド上の項目名からも変更・削除できます。</p>
+      <div id="incomeItemList"></div>
+      <button class="add-btn" id="addIncomeItemBtn">+ 収入項目を追加</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 class="collapsible-header" data-collapse-target="categorySettingsBody">分類の設定（支出） <span class="section-toggle">▶</span></h2>
     <div id="categorySettingsBody" class="collapsible-body collapsed-section">
       <p class="empty-note">家計簿の「分類」とタイムラインの支出行は共通です。大項目ごとに分類をまとめたり、大項目を付けずに管理することもできます。ここでの変更は家計簿側にも反映されます。</p>
       <div id="categoryGroupList"></div>
@@ -696,19 +706,19 @@ const EVENT_ROWS = [
   { id: 'event', label: 'イベント', type: 'eventname' },
 ];
 
-const INCOME_ROWS = [
-  { section: '収入（円/年）' },
-  { id: 'incomeDad',       label: 'パパ収入',   type: 'editable', default: 400, forwardFill: 'full' },
-  { id: 'incomeMom',       label: 'ママ収入',   type: 'editable', default: 100, forwardFill: 'full' },
-  { id: 'incomeOther',     label: 'その他収入', type: 'editable', default: 0,   forwardFill: 'full' },
-  { id: 'incomePension',   label: '年金',       type: 'computed' },
-  { id: 'incomeInsurance', label: '保険受取',   type: 'computed' },
-  { id: 'incomeTotal',     label: '収入合計',   type: 'computed' },
-];
+// 収入の行を動的に生成。収入項目(data.incomeItems)は自由に追加・改名・削除できる。
+function buildIncomeRows() {
+  const rows = [{ section: '収入（円/年）' }];
+  data.incomeItems.forEach(it => {
+    rows.push({ id: it.id, label: it.name, type: 'editable', default: 0, forwardFill: 'full', incItem: it.id });
+  });
+  rows.push({ id: 'incomePension',   label: '年金',     type: 'computed' });
+  rows.push({ id: 'incomeInsurance', label: '保険受取', type: 'computed' });
+  rows.push({ id: 'incomeTotal',     label: '収入合計', type: 'computed' });
+  return rows;
+}
 
 const EXPENSE_SUMMARY_ROWS = [
-  { id: 'expInsurance', label: '保険料',     type: 'computed' },
-  { id: 'expEvent',     label: 'イベント費', type: 'computed' },
   { id: 'expTotal',     label: '支出合計',   type: 'computed' },
 ];
 
@@ -721,7 +731,8 @@ const ASSET_ROWS = [
   { id: 'totalAssets',  label: '総資産',       type: 'computed' },
 ];
 
-const INCOME_IDS = ['incomeDad','incomeMom','incomeOther'];
+// 収入合計に算入する収入項目のID一覧(動的)。
+function incomeItemIds() { return data.incomeItems.map(it => it.id); }
 const BIRTH_IDS = ['birthDad','birthMom','birthChild1','birthChild2'];
 
 let data = loadData();
@@ -739,6 +750,11 @@ function defaultData() {
     insurances: [],
     monthlyCells: {},
     pension: { dad: { startAge: 65, amount: 0 }, mom: { startAge: 65, amount: 0 } },
+    incomeItems: [
+      { id: 'incomeDad', name: 'パパ収入' },
+      { id: 'incomeMom', name: 'ママ収入' },
+      { id: 'incomeOther', name: 'その他収入' },
+    ],
   };
 }
 
@@ -753,6 +769,11 @@ function loadData() {
       if (!saved.pension) saved.pension = { dad: { startAge: 65, amount: 0 }, mom: { startAge: 65, amount: 0 } };
       if (!saved.pension.dad) saved.pension.dad = { startAge: 65, amount: 0 };
       if (!saved.pension.mom) saved.pension.mom = { startAge: 65, amount: 0 };
+      if (!saved.incomeItems) saved.incomeItems = [
+        { id: 'incomeDad', name: 'パパ収入' },
+        { id: 'incomeMom', name: 'ママ収入' },
+        { id: 'incomeOther', name: 'その他収入' },
+      ];
       return saved;
     }
   } catch (e) {}
@@ -1043,7 +1064,7 @@ function buildRows() {
   return [
     ...AGE_ROWS,
     ...EVENT_ROWS,
-    ...INCOME_ROWS,
+    ...buildIncomeRows(),
     { section: '支出（円/年）' },
     ...buildExpenseCategoryRows(),
     ...EXPENSE_SUMMARY_ROWS,
@@ -1567,6 +1588,44 @@ document.getElementById('addInsuranceBtn').addEventListener('click', () => {
   generateMonthlyTable();
 });
 
+// --- 収入項目の設定 ---
+function renderIncomeSettings() {
+  const container = document.getElementById('incomeItemList');
+  if (!container) return;
+  container.innerHTML = '';
+  if (!data.incomeItems.length) {
+    const p = document.createElement('p');
+    p.className = 'empty-note';
+    p.textContent = '収入項目がありません。「+ 収入項目を追加」で追加してください。';
+    container.appendChild(p);
+  }
+  data.incomeItems.forEach(it => {
+    const row = document.createElement('div');
+    row.className = 'investment-row';
+    row.innerHTML = `
+      <input type="text" class="inv-name income-name" value="${it.name}" data-id="${it.id}">
+      <button class="del-investment-btn income-del" data-id="${it.id}">削除</button>
+    `;
+    container.appendChild(row);
+  });
+  container.querySelectorAll('.income-name').forEach(el => {
+    el.addEventListener('input', e => {
+      const it = data.incomeItems.find(x => x.id === e.target.dataset.id);
+      if (!it) return;
+      it.name = e.target.value;
+      saveData();
+      ROWS = buildRows();
+      generateTable();
+      generateMonthlyTable();
+    });
+  });
+  container.querySelectorAll('.income-del').forEach(el => {
+    el.addEventListener('click', e => deleteIncomeItem(e.target.dataset.id));
+  });
+}
+
+document.getElementById('addIncomeItemBtn').addEventListener('click', addIncomeItem);
+
 // --- 年金の設定 ---
 function renderPensionSettings() {
   const container = document.getElementById('pensionList');
@@ -1768,6 +1827,72 @@ function deleteGroupInline(groupId) {
   renderCategorySettings();
 }
 
+// --- 収入項目の追加・改名・削除 ---
+function renameIncomeItem(id, name) {
+  const it = data.incomeItems.find(x => x.id === id);
+  if (!it) return;
+  const trimmed = (name || '').trim();
+  if (!trimmed || trimmed === it.name) { generateTable(); generateMonthlyTable(); return; }
+  it.name = trimmed;
+  saveData();
+  ROWS = buildRows();
+  generateTable();
+  generateMonthlyTable();
+  renderIncomeSettings();
+}
+
+function deleteIncomeItem(id) {
+  const it = data.incomeItems.find(x => x.id === id);
+  if (!it) return;
+  if (!confirm(`収入項目「${it.name}」を削除します。よろしいですか?\n(この項目に入力した金額も削除されます)`)) return;
+  data.incomeItems = data.incomeItems.filter(x => x.id !== id);
+  delete data.cells[id];
+  delete data.monthlyCells[id];
+  saveData();
+  ROWS = buildRows();
+  generateTable();
+  generateMonthlyTable();
+  renderIncomeSettings();
+}
+
+function addIncomeItem() {
+  data.incomeItems.push({ id: 'inc' + Date.now() + Math.floor(Math.random() * 10000), name: '新しい収入' });
+  saveData();
+  ROWS = buildRows();
+  generateTable();
+  generateMonthlyTable();
+  renderIncomeSettings();
+}
+
+// --- 保険のグリッド上での改名・削除 ---
+function renameInsuranceInline(id, name) {
+  const ins = data.insurances.find(x => x.id === id);
+  if (!ins) return;
+  const trimmed = (name || '').trim();
+  if (!trimmed || trimmed === ins.name) { generateTable(); generateMonthlyTable(); return; }
+  ins.name = trimmed;
+  saveData();
+  ROWS = buildRows();
+  generateTable();
+  generateMonthlyTable();
+  renderInsuranceSettings();
+}
+
+function deleteInsuranceInline(id) {
+  const ins = data.insurances.find(x => x.id === id);
+  if (!ins) return;
+  if (!confirm(`保険「${ins.name}」を削除します。よろしいですか?\n(この保険に入力した金額も削除されます)`)) return;
+  data.insurances = data.insurances.filter(x => x.id !== id);
+  const rowId = `ins_${id}_premium`;
+  delete data.cells[rowId];
+  delete data.monthlyCells[rowId];
+  saveData();
+  ROWS = buildRows();
+  generateTable();
+  generateMonthlyTable();
+  renderInsuranceSettings();
+}
+
 // 支出の分類行・大項目行のラベルセル(編集入力+削除ボタン)を組み立てる。
 function buildEditableCategoryLabel(labelTd, row) {
   if (row.id.startsWith('catgrp_')) {
@@ -1795,6 +1920,47 @@ function buildEditableCategoryLabel(labelTd, row) {
     del.title = 'この大項目を削除';
     del.textContent = '✕';
     del.addEventListener('click', () => deleteGroupInline(row.groupId));
+    labelTd.appendChild(del);
+    return;
+  }
+
+  // 収入項目: 名前をその場で編集・削除
+  if (row.incItem) {
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.className = 'label-edit-input';
+    nameInput.value = row.label;
+    nameInput.addEventListener('change', e => renameIncomeItem(row.incItem, e.target.value));
+    labelTd.appendChild(nameInput);
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'label-del-btn';
+    del.title = 'この収入項目を削除';
+    del.textContent = '✕';
+    del.addEventListener('click', () => deleteIncomeItem(row.incItem));
+    labelTd.appendChild(del);
+    return;
+  }
+
+  // 保険項目: 名前をその場で編集・削除(「○○ 保険料」の○○部分)
+  if (row.insId) {
+    const ins = data.insurances.find(x => x.id === row.insId);
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.className = 'label-edit-input';
+    nameInput.value = ins ? ins.name : row.label.replace(/ ?保険料$/, '');
+    nameInput.addEventListener('change', e => renameInsuranceInline(row.insId, e.target.value));
+    labelTd.appendChild(nameInput);
+    const suffix = document.createElement('span');
+    suffix.className = 'label-suffix';
+    suffix.textContent = '保険料';
+    labelTd.appendChild(suffix);
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'label-del-btn';
+    del.title = 'この保険を削除';
+    del.textContent = '✕';
+    del.addEventListener('click', () => deleteInsuranceInline(row.insId));
     labelTd.appendChild(del);
     return;
   }
@@ -1853,7 +2019,7 @@ function generateTable() {
 
     const labelTd = document.createElement('td');
     labelTd.className = 'row-label';
-    if (row.id.startsWith('catgrp_') || row.catId !== undefined) {
+    if (row.id.startsWith('catgrp_') || row.catId !== undefined || row.incItem || row.insId) {
       buildEditableCategoryLabel(labelTd, row);
     } else if (row.type === 'age' && row.birth) {
       // 名前 + 生まれ年の直接入力(基本情報を開かなくてもここで変更できる)
@@ -2106,8 +2272,8 @@ function generateMonthlyTable() {
 
     const labelTd = document.createElement('td');
     labelTd.className = 'row-label';
-    if (row.catId !== undefined || row.grpDirect) {
-      // 支出の分類行・直接入力の大項目: 名前をその場で編集・削除できる + リセット
+    if (row.catId !== undefined || row.grpDirect || row.incItem || row.insId) {
+      // 分類・直接入力大項目・収入項目・保険: 名前をその場で編集・削除できる + リセット
       buildEditableCategoryLabel(labelTd, row);
     } else {
       labelTd.appendChild(document.createTextNode(row.label));
@@ -2259,7 +2425,7 @@ function recalcMonthlyTable() {
         input.value = formatInputYen(val);
         input.classList.toggle('inherited', getMonthlyOverride(row.id, year, m) === undefined);
       }
-      if (INCOME_IDS.includes(row.id)) monthIncomeTotals[m] += val;
+      if (incomeItemIds().includes(row.id)) monthIncomeTotals[m] += val;
       if (row.catId !== undefined || row.insId !== undefined || row.grpDirect !== undefined) monthExpenseTotals[m] += val;
       if (row.catId !== undefined && row.groupId) groupMonthTotals[row.groupId][m] += val;
     }
@@ -2309,7 +2475,7 @@ function recalcAll() {
   years.forEach(year => {
     const insurancePayout = insurancePayoutTotal(year);
     const pension = pensionForYear(year);
-    const incomeTotal = INCOME_IDS.reduce((s, id) => s + getYearlyEffectiveValue(id, year), 0) + insurancePayout + pension;
+    const incomeTotal = incomeItemIds().reduce((s, id) => s + getYearlyEffectiveValue(id, year), 0) + insurancePayout + pension;
     const eventCost = lifeEventCost(year);
     const insurancePremium = insurancePremiumTotal(year);
     const expCategoryTotal = expenseCategoryRows().reduce((s, r) => s + getYearlyEffectiveValue(r.id, year), 0);
@@ -2451,6 +2617,7 @@ function updateSummary(years, cashArr, investArr, totalArr) {
 
 migrateData();
 initSettingsInputs();
+renderIncomeSettings();
 renderCategorySettings();
 renderInvestmentSettings();
 renderLifeEventSettings();
