@@ -2291,7 +2291,23 @@ function generateMonthlyTable() {
   const body = document.getElementById('monthlyBody');
   body.innerHTML = '';
 
-  getMonthlyRows().forEach(row => {
+  // 年次と同じように、収入・支出・保険・投資などをセクション(水色帯)で分けて表示する。
+  let pendingSection = null;
+  ROWS.forEach(row => {
+    if (row.section) { pendingSection = row.section; return; }
+    const isMonthly = (row.type === 'editable' && row.forwardFill !== undefined) || (row.id && row.id.startsWith('catgrp_'));
+    if (!isMonthly) return;
+    if (pendingSection) {
+      const sectr = document.createElement('tr');
+      sectr.className = 'section-row';
+      const sectd = document.createElement('td');
+      sectd.colSpan = 14;
+      sectd.textContent = pendingSection.replace(/（.*?）/, '');
+      sectr.appendChild(sectd);
+      body.appendChild(sectr);
+      pendingSection = null;
+    }
+
     const tr = document.createElement('tr');
     tr.dataset.rowId = row.id;
 
@@ -2583,6 +2599,17 @@ function recalcAll() {
   updateChart(years, cashArr, investArr, totalArr);
   updateSummary(years, cashArr, investArr, totalArr, firstYearStats);
   updateExpenseDonut(years[0]);
+  // TOPページ用に、計算した予測総資産のスナップショットを保存(円)。
+  try {
+    localStorage.setItem('lifeMoneyProjectionV1', JSON.stringify({
+      updatedAt: Date.now(),
+      startYear: years[0],
+      finalYear: years[years.length - 1],
+      finalTotal: toYen(totalArr[totalArr.length - 1]),
+      finalCash: toYen(cashArr[cashArr.length - 1]),
+      finalInvest: toYen(investArr[investArr.length - 1]),
+    }));
+  } catch (e) {}
   recalcMonthlyTable();
 }
 

@@ -73,6 +73,25 @@
     border-radius: 6px;
     font-family: inherit;
   }
+  /* 現在の総資産ヒーロー */
+  .hero-card {
+    background: linear-gradient(135deg, #38b6d3 0%, #2c8fae 100%);
+    color: #fff;
+    border: none;
+    box-shadow: 0 10px 28px rgba(56,182,211,0.28);
+  }
+  .hero-label { font-size: 13px; opacity: .9; font-weight: 600; }
+  .hero-value { font-size: 34px; font-weight: 800; letter-spacing: .01em; margin: 6px 0 2px; }
+  .hero-sub { font-size: 13px; opacity: .95; }
+  .hero-future {
+    font-size: 13px;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255,255,255,.35);
+    opacity: .95;
+  }
+  .hero-future strong { font-size: 16px; }
+  @media (max-width: 480px) { .hero-value { font-size: 28px; } }
   .quick-links { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
   .quick-links a {
     text-decoration: none;
@@ -275,6 +294,13 @@
     <button type="button" id="backupReminderClose" class="br-close" title="閉じる">×</button>
   </div>
 
+  <div class="card hero-card">
+    <div class="hero-label">現在の総資産</div>
+    <div class="hero-value" id="heroTotal">¥0</div>
+    <div class="hero-sub" id="heroSub"></div>
+    <div class="hero-future" id="heroFuture" style="display:none"></div>
+  </div>
+
   <div class="card">
     <h2>基本情報</h2>
     <div class="settings-grid">
@@ -369,7 +395,7 @@ function initBasicInfo() {
   document.getElementById('numYears').addEventListener('change', e => {
     data.numYears = Math.max(1, parseInt(e.target.value) || 1); saveData();
   });
-  ia.addEventListener('input', e => { data.initialAssets = parseYenInput(e.target.value); saveData(); });
+  ia.addEventListener('input', e => { data.initialAssets = parseYenInput(e.target.value); saveData(); renderHero(); });
   BIRTH_IDS.forEach(id => {
     document.getElementById(id).addEventListener('input', e => {
       const v = e.target.value;
@@ -379,7 +405,28 @@ function initBasicInfo() {
   });
 }
 
+// 現在の総資産(現金＋投資の初期残高)を大きく表示。将来予測は年次タイムラインの計算結果(あれば)から。
+function renderHero() {
+  const cash = toYen(data.initialAssets || 0);
+  const invest = (data.investments || []).reduce((s, inv) => s + toYen(inv.initialBalance || 0), 0);
+  const total = cash + invest;
+  document.getElementById('heroTotal').textContent = '¥' + total.toLocaleString();
+  document.getElementById('heroSub').textContent = `現金 ¥${cash.toLocaleString()} ・ 投資 ¥${invest.toLocaleString()}`;
+  const futureEl = document.getElementById('heroFuture');
+  try {
+    const proj = JSON.parse(localStorage.getItem('lifeMoneyProjectionV1') || 'null');
+    if (proj && proj.finalYear && proj.finalTotal != null) {
+      const yrs = proj.finalYear - (proj.startYear || proj.finalYear);
+      futureEl.innerHTML = `${proj.finalYear}年(${yrs}年後)の予測総資産　<strong>¥${Number(proj.finalTotal).toLocaleString()}</strong>`;
+      futureEl.style.display = '';
+    } else {
+      futureEl.style.display = 'none';
+    }
+  } catch (e) { futureEl.style.display = 'none'; }
+}
+
 initBasicInfo();
+renderHero();
 
 // --- バックアップのおすすめ(自動ナッジ) ---
 // アプリは入力のたびにブラウザへ自動保存されますが、ブラウザのデータを消すと失われます。
