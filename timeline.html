@@ -23,6 +23,7 @@
     --color-total: #2c6b7a;
   }
   * { box-sizing: border-box; }
+  body { font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
   body {
     margin: 0;
     font-family: "Hiragino Sans", "Yu Gothic", "Segoe UI", system-ui, sans-serif;
@@ -64,8 +65,8 @@
   }
   .sidebar a {
     display: block;
-    padding: 14px 20px;
-    font-size: 15px;
+    padding: 13px 18px;
+    font-size: 14px;
     font-weight: 600;
     color: var(--text);
     text-decoration: none;
@@ -111,7 +112,7 @@
     border-top: 3px solid var(--accent);
     border-radius: 12px;
     padding: 18px 20px;
-    box-shadow: 0 1px 3px rgba(56,182,211,0.08);
+    box-shadow: 0 2px 12px rgba(44,58,66,0.06);
     margin-bottom: 16px;
   }
   .card h2 {
@@ -293,6 +294,7 @@
     padding: 2px;
     font-family: inherit;
     color: var(--text);
+    font-variant-numeric: tabular-nums;
   }
   .cell-input.inherited {
     color: var(--text-light);
@@ -435,7 +437,7 @@
     cursor: pointer;
     margin-top: 4px;
   }
-  .add-btn:hover { opacity: 0.9; }
+  .add-btn:hover { opacity: 0.95; box-shadow: 0 2px 8px rgba(56,182,211,0.30); }
   .category-group {
     border: 1px solid var(--border);
     border-radius: 8px;
@@ -564,11 +566,11 @@
 <div class="page" style="display:none">
   <nav class="sidebar">
     <div class="sidebar-title">デザイン４ライフ</div>
-    <a href="top.html">TOP</a>
-    <a href="kakeibo.html">家計簿</a>
-    <a href="timeline.html#monthly">月次キャッシュフロー</a>
-    <a href="timeline.html#yearly">年次タイムライン</a>
-    <a href="index.html" class="sidebar-sub">投資シミュレーション</a>
+    <a href="top.html">🏠 TOP</a>
+    <a href="kakeibo.html">📒 家計簿</a>
+    <a href="timeline.html#monthly">📅 月次キャッシュフロー</a>
+    <a href="timeline.html#yearly">📈 年次タイムライン</a>
+    <a href="index.html" class="sidebar-sub">💹 投資シミュレーション</a>
   </nav>
   <h1>人生キャッシュフロー</h1>
   <p class="subtitle">年ごとの年齢・収入・支出・投資から、総資産の推移をシミュレーションします（単位：円）</p>
