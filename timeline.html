@@ -1111,6 +1111,19 @@ function migrateData() {
     changed = true;
   }
 
+  // 保険・投資のデフォルト1行を初回だけ作成（金額は0。削除後は復活しない）。
+  if (!data.defaultItemsCreated) {
+    if (!data.insurances.length) {
+      data.insurances.push({ id: 'ins_default', name: '生命保険', payoutYear: null, payoutAmount: 0 });
+    }
+    if (!data.investments.length) {
+      data.investments.push({ id: 'inv_default', name: '投資', rate: 5, initialBalance: 0 });
+    }
+    data.defaultItemsCreated = true;
+    ROWS = buildRows();
+    changed = true;
+  }
+
   if (changed) saveData();
 }
 
@@ -1166,7 +1179,7 @@ function buildInvestmentRows() {
     return rows;
   }
   data.investments.forEach(inv => {
-    rows.push({ id: `inv_${inv.id}_contrib`, label: `${inv.name} 投資額`, type: 'editable', default: 0, forwardFill: 'full', invId: inv.id });
+    rows.push({ id: `inv_${inv.id}_contrib`, label: `${inv.name} 積立額`, type: 'editable', default: 0, forwardFill: 'full', invId: inv.id });
     rows.push({ id: `inv_${inv.id}_balance`, label: `${inv.name} 残高`, type: 'computed', invId: inv.id });
   });
   return rows;
@@ -2278,12 +2291,12 @@ function buildEditableCategoryLabel(labelTd, row) {
     const nameInput = document.createElement('input');
     nameInput.type = 'text';
     nameInput.className = 'label-edit-input';
-    nameInput.value = inv ? inv.name : row.label.replace(/ ?投資額$/, '');
+    nameInput.value = inv ? inv.name : row.label.replace(/ ?積立額$/, '');
     nameInput.addEventListener('change', e => renameInvestmentInline(row.invId, e.target.value));
     labelTd.appendChild(nameInput);
     const suffix = document.createElement('span');
     suffix.className = 'label-suffix';
-    suffix.textContent = '投資額';
+    suffix.textContent = '積立額';
     labelTd.appendChild(suffix);
     const del = document.createElement('button');
     del.type = 'button';
