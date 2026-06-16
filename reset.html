@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>データ消去 - デザイン４ライフ</title>
+<style>
+  body { font-family: "Hiragino Sans","Yu Gothic",sans-serif; background:#eef7fb; display:flex; align-items:center; justify-content:center; height:100vh; margin:0; }
+  .box { background:#fff; border-radius:16px; padding:40px 36px; box-shadow:0 8px 24px rgba(44,58,66,0.10); text-align:center; max-width:360px; width:90%; }
+  h1 { font-size:18px; color:#2c3a42; margin:0 0 12px; }
+  p { font-size:13px; color:#7c8d97; margin:0 0 24px; line-height:1.7; }
+  .btn-danger { background:#d9534f; color:#fff; border:none; border-radius:10px; padding:14px 28px; font-size:15px; font-family:inherit; cursor:pointer; width:100%; margin-bottom:10px; }
+  .btn-cancel { background:#fff; color:#7c8d97; border:1px solid #d4e8f0; border-radius:10px; padding:12px 28px; font-size:14px; font-family:inherit; cursor:pointer; width:100%; }
+  .done { color:#4caf7d; font-weight:700; font-size:16px; display:none; margin-bottom:16px; }
+</style>
+</head>
+<body>
+<div class="box">
+  <h1>⚠ 全データ消去</h1>
+  <p>入力した金額・家計簿・分類・設定をすべて消去して白紙に戻します。<br>この操作はやり直しできません。</p>
+  <p class="done" id="done">✓ 消去しました。TOP へ移動します…</p>
+  <button class="btn-danger" id="resetBtn">すべて消去して白紙に戻す</button>
+  <button class="btn-cancel" onclick="history.back()">キャンセル</button>
+</div>
+<script>
+document.getElementById('resetBtn').addEventListener('click', function() {
+  if (!confirm('本当に全データを消去しますか？\nやり直しはできません。')) return;
+  const auth = localStorage.getItem('lifeMoneyAuthV1');
+  localStorage.clear();
+  if (auth) localStorage.setItem('lifeMoneyAuthV1', auth);
+  document.getElementById('done').style.display = 'block';
+  document.getElementById('resetBtn').style.display = 'none';
+  setTimeout(function() { location.href = 'top.html'; }, 1500);
+});
+</script>
+</body>
+</html>
