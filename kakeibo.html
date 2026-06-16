@@ -497,14 +497,14 @@
 <script>
 const STORAGE_KEY = 'lifeMoneyKakeiboV1';
 const DEFAULT_CATEGORIES = ['食費','日用品','医療','教育','美容・衣類','レジャー・趣味','その他'];
-// 「誰が」の候補: 「共通」 + timelineの家族名。自由入力も可能(datalist)。
+// 「誰が」の候補: 「共通」 + timelineの家族名。未初期化時はデフォルト名。自由入力も可能(datalist)。
 function getWhoOptions() {
   const base = ['共通'];
   try {
     const tl = JSON.parse(localStorage.getItem('lifeMoneyTimelineV1') || 'null');
-    if (tl && Array.isArray(tl.family)) {
-      tl.family.forEach(m => { if (m.name && !base.includes(m.name)) base.push(m.name); });
-    }
+    const fam = (tl && Array.isArray(tl.family)) ? tl.family
+      : [{ name: 'パパ' }, { name: 'ママ' }, { name: '子1' }];
+    fam.forEach(m => { if (m.name && !base.includes(m.name)) base.push(m.name); });
   } catch (e) {}
   return base;
 }

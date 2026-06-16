@@ -566,7 +566,6 @@
   .event-amount-input::placeholder { color: var(--text-light); opacity: .5; }
   .event-amount-input:focus { outline: 2px solid var(--accent); background: #fff; border-radius: 3px; color: var(--text); }
   .section-add-btn {
-    float: right;
     background: var(--accent);
     color: #fff;
     border: none;
@@ -576,6 +575,8 @@
     font-weight: 700;
     cursor: pointer;
     line-height: 1.4;
+    margin-right: 6px;
+    vertical-align: middle;
   }
   .section-add-btn:hover { background: #2aa0bc; }
   .label-add-btn {
@@ -2321,7 +2322,7 @@ function generateTable() {
       const addBtnHtml = row.sectionType
         ? `<button type="button" class="section-add-btn" data-section-type="${row.sectionType}">＋</button>`
         : '';
-      td.innerHTML = `<button type="button" class="section-toggle-btn" data-section="${row.section}">${collapsed ? '▶' : '▼'}</button>${row.section}${addBtnHtml}`;
+      td.innerHTML = `<button type="button" class="section-toggle-btn" data-section="${row.section}">${collapsed ? '▶' : '▼'}</button>${addBtnHtml}${row.section}`;
       tr.appendChild(td);
       body.appendChild(tr);
       return;
