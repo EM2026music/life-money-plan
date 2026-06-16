@@ -386,9 +386,9 @@ const BIRTH_IDS = ['birthDad','birthMom','birthChild1','birthChild2'];
 
 function defaultFamily() {
   return [
-    { id: 'dad', name: 'パパ', type: 'adult', birth: 1988 },
-    { id: 'mom', name: 'ママ', type: 'adult', birth: 1990 },
-    { id: 'child1', name: '子1', type: 'child', birth: 2021 },
+    { id: 'dad', name: 'パパ', type: 'adult', birth: null },
+    { id: 'mom', name: 'ママ', type: 'adult', birth: null },
+    { id: 'child1', name: '子1', type: 'child', birth: null },
   ];
 }
 
@@ -396,8 +396,8 @@ function defaultData() {
   return {
     startYear: 2026,
     numYears: 35,
-    initialAssets: 500,
-    births: { birthDad: 1988, birthMom: 1990, birthChild1: 2021, birthChild2: null },
+    initialAssets: 0,
+    births: { birthDad: null, birthMom: null, birthChild1: null, birthChild2: null },
     family: defaultFamily(),
     cells: {},
     investments: [],
