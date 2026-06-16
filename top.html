@@ -92,6 +92,53 @@
   }
   .hero-future strong { font-size: 16px; }
   @media (max-width: 480px) { .hero-value { font-size: 28px; } }
+  /* 家族構成エディタ */
+  .family-section { margin-top: 16px; }
+  .family-head { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+  .family-hint { font-size: 11px; font-weight: 400; color: var(--text-light); }
+  .family-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .family-row .fam-name {
+    flex: 1 1 120px;
+    min-width: 100px;
+    font-size: 14px;
+    padding: 7px 9px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-family: inherit;
+  }
+  .family-row .fam-field { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-light); white-space: nowrap; }
+  .family-row .fam-birth { width: 80px; font-size: 14px; padding: 7px 8px; border: 1px solid var(--border); border-radius: 8px; font-family: inherit; font-variant-numeric: tabular-nums; }
+  .family-row .fam-del {
+    border: 1px solid var(--neg);
+    background: #fff;
+    color: var(--neg);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 12px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .family-row .fam-del:hover { background: rgba(217,83,79,0.08); }
+  .add-btn {
+    margin-top: 12px;
+    border: 1px solid var(--accent);
+    background: #fff;
+    color: var(--accent);
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-size: 14px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .add-btn:hover { background: var(--section-bg); }
+  .add-btn:disabled { opacity: .5; cursor: not-allowed; }
   .quick-links { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
   .quick-links a {
     text-decoration: none;
@@ -313,20 +360,13 @@
       <label>現在の現金資産（円）
         <input type="text" inputmode="numeric" id="initialAssets">
       </label>
-      <label>パパ 生年
-        <input type="number" id="birthDad">
-      </label>
-      <label>ママ 生年
-        <input type="number" id="birthMom">
-      </label>
-      <label>子1 生年
-        <input type="number" id="birthChild1">
-      </label>
-      <label>子2 生年（いなければ空欄）
-        <input type="number" id="birthChild2">
-      </label>
     </div>
-    <p class="note">ここで設定した開始年・年数・現金資産・家族の生年は、人生キャッシュフロー(月次・年次)に反映されます。生年は年次タイムラインの名前の右からも変更できます。</p>
+    <div class="family-section">
+      <div class="family-head">家族構成 <span class="family-hint">(最大10人・年齢/学年の計算に使います)</span></div>
+      <div id="familyList"></div>
+      <button class="add-btn" id="addFamilyBtn">＋ 家族を追加</button>
+    </div>
+    <p class="note">開始年・年数・現金資産・家族構成は、人生キャッシュフロー(月次・年次)に反映されます。名前・生年は年次タイムラインの行からも変更できます。</p>
   </div>
 
   <div class="card">
@@ -344,12 +384,21 @@
 const STORAGE_KEY = 'lifeMoneyTimelineV1';
 const BIRTH_IDS = ['birthDad','birthMom','birthChild1','birthChild2'];
 
+function defaultFamily() {
+  return [
+    { id: 'dad', name: 'パパ', type: 'adult', birth: 1988 },
+    { id: 'mom', name: 'ママ', type: 'adult', birth: 1990 },
+    { id: 'child1', name: '子1', type: 'child', birth: 2021 },
+  ];
+}
+
 function defaultData() {
   return {
     startYear: 2026,
     numYears: 35,
     initialAssets: 500,
     births: { birthDad: 1988, birthMom: 1990, birthChild1: 2021, birthChild2: null },
+    family: defaultFamily(),
     cells: {},
     investments: [],
     lifeEvents: [],
@@ -364,6 +413,16 @@ function loadData() {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
     if (saved) {
       if (!saved.births) saved.births = defaultData().births;
+      if (!saved.investments) saved.investments = [];
+      if (!saved.family) {
+        const b = saved.births || {};
+        saved.family = [
+          { id: 'dad', name: 'パパ', type: 'adult', birth: b.birthDad ?? null },
+          { id: 'mom', name: 'ママ', type: 'adult', birth: b.birthMom ?? null },
+          { id: 'child1', name: '子1', type: 'child', birth: b.birthChild1 ?? null },
+        ];
+        if (b.birthChild2 != null) saved.family.push({ id: 'child2', name: '子2', type: 'child', birth: b.birthChild2 });
+      }
       return saved;
     }
   } catch (e) {}
@@ -387,7 +446,6 @@ function initBasicInfo() {
   ia.value = formatInputYen(data.initialAssets);
   ia.addEventListener('focus', () => { ia.value = ia.value.replace(/[,，\s]/g, ''); ia.select(); });
   ia.addEventListener('blur', () => { ia.value = formatInputYen(parseYenInput(ia.value)); });
-  BIRTH_IDS.forEach(id => { document.getElementById(id).value = data.births[id] ?? ''; });
 
   document.getElementById('startYear').addEventListener('change', e => {
     data.startYear = parseInt(e.target.value) || 2026; saveData();
@@ -396,14 +454,44 @@ function initBasicInfo() {
     data.numYears = Math.max(1, parseInt(e.target.value) || 1); saveData();
   });
   ia.addEventListener('input', e => { data.initialAssets = parseYenInput(e.target.value); saveData(); renderHero(); });
-  BIRTH_IDS.forEach(id => {
-    document.getElementById(id).addEventListener('input', e => {
-      const v = e.target.value;
-      data.births[id] = v === '' ? null : parseInt(v);
-      saveData();
-    });
-  });
 }
+
+// 家族構成の編集(名前・生年・子ども区分・追加/削除。最大10人)
+function renderFamily() {
+  const c = document.getElementById('familyList');
+  c.innerHTML = '';
+  data.family.forEach(m => {
+    const row = document.createElement('div');
+    row.className = 'family-row';
+    row.innerHTML = `
+      <input type="text" class="fam-name" value="${m.name}" data-id="${m.id}" placeholder="名前">
+      <label class="fam-field">生年<input type="number" class="fam-birth" value="${m.birth ?? ''}" data-id="${m.id}" placeholder="例:1988"></label>
+      <label class="fam-field"><input type="checkbox" class="fam-child" data-id="${m.id}" ${m.type === 'child' ? 'checked' : ''}>子ども</label>
+      <button type="button" class="fam-del" data-id="${m.id}">削除</button>
+    `;
+    c.appendChild(row);
+  });
+  const fm = e => data.family.find(x => x.id === e.target.dataset.id);
+  c.querySelectorAll('.fam-name').forEach(el => el.addEventListener('input', e => { const m = fm(e); if (m) { m.name = e.target.value; saveData(); } }));
+  c.querySelectorAll('.fam-birth').forEach(el => el.addEventListener('input', e => { const m = fm(e); if (m) { m.birth = e.target.value === '' ? null : (parseInt(e.target.value) || null); saveData(); } }));
+  c.querySelectorAll('.fam-child').forEach(el => el.addEventListener('change', e => { const m = fm(e); if (m) { m.type = e.target.checked ? 'child' : 'adult'; saveData(); } }));
+  c.querySelectorAll('.fam-del').forEach(el => el.addEventListener('click', e => {
+    const m = fm(e);
+    if (!m) return;
+    if (!confirm(`「${m.name}」を家族から削除します。よろしいですか?`)) return;
+    data.family = data.family.filter(x => x.id !== e.target.dataset.id);
+    saveData();
+    renderFamily();
+  }));
+  document.getElementById('addFamilyBtn').disabled = data.family.length >= 10;
+}
+
+document.getElementById('addFamilyBtn').addEventListener('click', () => {
+  if (data.family.length >= 10) { alert('家族は10人までです。'); return; }
+  data.family.push({ id: 'fam' + Date.now() + Math.floor(Math.random() * 1000), name: '新しい家族', type: 'adult', birth: null });
+  saveData();
+  renderFamily();
+});
 
 // 現在の総資産(現金＋投資の初期残高)を大きく表示。将来予測は年次タイムラインの計算結果(あれば)から。
 function renderHero() {
@@ -426,6 +514,7 @@ function renderHero() {
 }
 
 initBasicInfo();
+renderFamily();
 renderHero();
 
 // --- バックアップのおすすめ(自動ナッジ) ---

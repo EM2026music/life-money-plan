@@ -747,13 +747,15 @@
 <script>
 const STORAGE_KEY = 'lifeMoneyTimelineV1';
 
-const AGE_ROWS = [
-  { section: '年齢' },
-  { id: 'ageDad',    label: 'パパ', type: 'age', birth: 'birthDad' },
-  { id: 'ageMom',    label: 'ママ', type: 'age', birth: 'birthMom' },
-  { id: 'ageChild1', label: '子1', type: 'age', birth: 'birthChild1' },
-  { id: 'ageChild2', label: '子2', type: 'age', birth: 'birthChild2' },
-];
+// 家族の年齢行を data.family から動的に生成。家族は自由に追加・改名・削除できる(最大10人)。
+const MAX_FAMILY = 10;
+function buildAgeRows() {
+  const rows = [{ section: '年齢' }];
+  data.family.forEach(m => {
+    rows.push({ id: 'age_' + m.id, label: m.name, type: 'age', familyId: m.id, isChild: m.type === 'child' });
+  });
+  return rows;
+}
 
 const EVENT_ROWS = [
   { section: 'ライフイベント' },
@@ -798,6 +800,11 @@ function defaultData() {
     numYears: 35,
     initialAssets: 500,
     births: { birthDad: 1988, birthMom: 1990, birthChild1: 2021, birthChild2: null },
+    family: [
+      { id: 'dad', name: 'パパ', type: 'adult', birth: 1988 },
+      { id: 'mom', name: 'ママ', type: 'adult', birth: 1990 },
+      { id: 'child1', name: '子1', type: 'child', birth: 2021 },
+    ],
     cells: {},
     investments: [],
     lifeEvents: [],
@@ -830,6 +837,16 @@ function loadData() {
         { id: 'incomeMom', name: 'ママ収入' },
         { id: 'incomeOther', name: 'その他収入' },
       ];
+      // 旧データ(固定の births)から家族構成へ移行(一度だけ)。
+      if (!saved.family) {
+        const b = saved.births || {};
+        saved.family = [
+          { id: 'dad', name: 'パパ', type: 'adult', birth: b.birthDad ?? null },
+          { id: 'mom', name: 'ママ', type: 'adult', birth: b.birthMom ?? null },
+          { id: 'child1', name: '子1', type: 'child', birth: b.birthChild1 ?? null },
+        ];
+        if (b.birthChild2 != null) saved.family.push({ id: 'child2', name: '子2', type: 'child', birth: b.birthChild2 });
+      }
       return saved;
     }
   } catch (e) {}
@@ -1131,7 +1148,7 @@ function expenseCategoryRows() {
 
 function buildRows() {
   return [
-    ...AGE_ROWS,
+    ...buildAgeRows(),
     ...EVENT_ROWS,
     ...buildIncomeRows(),
     { section: '支出（円/年）' },
@@ -1980,6 +1997,38 @@ function deleteInvestmentInline(id) {
   renderInvestmentSettings();
 }
 
+// --- 家族構成の編集(名前・生年・追加・削除。最大10人) ---
+function renameFamilyMember(id, name) {
+  const m = data.family.find(x => x.id === id);
+  if (!m) return;
+  const t = (name || '').trim();
+  if (!t || t === m.name) { generateTable(); return; }
+  m.name = t;
+  saveData();
+  ROWS = buildRows();
+  generateTable();
+  generateMonthlyTable();
+}
+
+function setFamilyBirth(id, v) {
+  const m = data.family.find(x => x.id === id);
+  if (!m) return;
+  m.birth = v === '' ? null : (parseInt(v) || null);
+  saveData();
+  recalcAll();
+}
+
+function deleteFamilyMember(id) {
+  const m = data.family.find(x => x.id === id);
+  if (!m) return;
+  if (!confirm(`「${m.name}」を家族から削除します。よろしいですか?`)) return;
+  data.family = data.family.filter(x => x.id !== id);
+  saveData();
+  ROWS = buildRows();
+  generateTable();
+  generateMonthlyTable();
+}
+
 // 支出の分類行・大項目行のラベルセル(編集入力+削除ボタン)を組み立てる。
 function buildEditableCategoryLabel(labelTd, row) {
   if (row.id.startsWith('catgrp_')) {
@@ -2131,9 +2180,15 @@ function generateTable() {
     labelTd.className = 'row-label';
     if (row.id.startsWith('catgrp_') || row.catId !== undefined || row.incItem || row.insId || (row.invId && row.id.endsWith('_contrib'))) {
       buildEditableCategoryLabel(labelTd, row);
-    } else if (row.type === 'age' && row.birth) {
-      // 名前 + 生まれ年の直接入力(基本情報を開かなくてもここで変更できる)
-      labelTd.appendChild(document.createTextNode(row.label));
+    } else if (row.type === 'age' && row.familyId) {
+      // 名前(改名可)+ 生まれ年の直接入力 + 削除(基本情報を開かなくてもここで変更できる)
+      const m = data.family.find(x => x.id === row.familyId);
+      const nameInput = document.createElement('input');
+      nameInput.type = 'text';
+      nameInput.className = 'label-edit-input';
+      nameInput.value = m ? m.name : row.label;
+      nameInput.addEventListener('change', e => renameFamilyMember(row.familyId, e.target.value));
+      labelTd.appendChild(nameInput);
       const birthLabel = document.createElement('span');
       birthLabel.className = 'birth-label';
       birthLabel.textContent = '生まれ年';
@@ -2142,14 +2197,16 @@ function generateTable() {
       birthInput.type = 'number';
       birthInput.className = 'birth-inline';
       birthInput.placeholder = '例:1988';
-      birthInput.value = data.births[row.birth] ?? '';
-      birthInput.addEventListener('change', e => {
-        const v = e.target.value;
-        data.births[row.birth] = v === '' ? null : parseInt(v);
-        saveData();
-        recalcAll();
-      });
+      birthInput.value = (m && m.birth != null) ? m.birth : '';
+      birthInput.addEventListener('change', e => setFamilyBirth(row.familyId, e.target.value));
       labelTd.appendChild(birthInput);
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'label-del-btn';
+      del.title = 'この家族を削除';
+      del.textContent = '✕';
+      del.addEventListener('click', () => deleteFamilyMember(row.familyId));
+      labelTd.appendChild(del);
     } else {
       labelTd.textContent = row.label;
     }
@@ -2225,7 +2282,7 @@ function applyYearlyFreeze() {
   const thead = scroll.querySelector('thead');
   const headH = thead ? thead.getBoundingClientRect().height : 0;
   const bodyRows = Array.from(scroll.querySelectorAll('tbody tr'));
-  const freezeCount = AGE_ROWS.length + EVENT_ROWS.length;
+  const freezeCount = (1 + data.family.length) + EVENT_ROWS.length;
 
   bodyRows.forEach(tr => {
     tr.classList.remove('frozen-row', 'frozen-row-last');
@@ -2589,16 +2646,13 @@ function recalcMonthlyTable() {
 function recalcAll() {
   const years = getYears();
 
-  ['ageDad','ageMom','ageChild1','ageChild2'].forEach(id => {
-    const birthKey = { ageDad: 'birthDad', ageMom: 'birthMom', ageChild1: 'birthChild1', ageChild2: 'birthChild2' }[id];
-    const birth = data.births[birthKey];
-    const isChild = (id === 'ageChild1' || id === 'ageChild2');
+  data.family.forEach(m => {
     years.forEach(year => {
-      const td = document.querySelector(`td.age-cell[data-row-id="${id}"][data-year="${year}"]`);
+      const td = document.querySelector(`td.age-cell[data-row-id="age_${m.id}"][data-year="${year}"]`);
       if (!td) return;
-      if (!birth) { td.textContent = '-'; return; }
-      const age = year - birth;
-      const grade = isChild ? schoolGrade(age) : '';
+      if (m.birth == null) { td.textContent = '-'; return; }
+      const age = year - m.birth;
+      const grade = m.type === 'child' ? schoolGrade(age) : '';
       td.innerHTML = grade ? `${age}<span class="grade">${grade}</span>` : String(age);
     });
   });
