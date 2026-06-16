@@ -988,26 +988,28 @@ function migrateData() {
   }
 
   // 旧「保険料」(単一行・フォワードフィル default:30)を保険テーブルに変換。
-  // 各年の実効値をそのままコピーするので、見た目の値は変わらない。
+  // 旧データが存在する場合のみ実行。新規・リセット後はスキップ。
   if (!data.migratedInsurance) {
-    const id = 'ins' + Date.now();
-    const premiumCells = {};
-    let carry = 30;
-    years.forEach(year => {
-      const stored = data.cells.expInsurance && data.cells.expInsurance[year];
-      const val = (stored !== undefined && stored !== null) ? stored : carry;
-      carry = val;
-      premiumCells[year] = val;
-    });
-    data.insurances.push({ id, name: '生命保険', payoutYear: null, payoutAmount: 0 });
-    data.cells['ins_' + id + '_premium'] = premiumCells;
-    if (data.monthlyCells.expInsurance) {
-      data.monthlyCells['ins_' + id + '_premium'] = data.monthlyCells.expInsurance;
-      delete data.monthlyCells.expInsurance;
+    if (data.cells.expInsurance) {
+      const id = 'ins' + Date.now();
+      const premiumCells = {};
+      let carry = 30;
+      years.forEach(year => {
+        const stored = data.cells.expInsurance[year];
+        const val = (stored !== undefined && stored !== null) ? stored : carry;
+        carry = val;
+        premiumCells[year] = val;
+      });
+      data.insurances.push({ id, name: '生命保険', payoutYear: null, payoutAmount: 0 });
+      data.cells['ins_' + id + '_premium'] = premiumCells;
+      if (data.monthlyCells.expInsurance) {
+        data.monthlyCells['ins_' + id + '_premium'] = data.monthlyCells.expInsurance;
+        delete data.monthlyCells.expInsurance;
+      }
+      delete data.cells.expInsurance;
+      ROWS = buildRows();
     }
-    delete data.cells.expInsurance;
     data.migratedInsurance = true;
-    ROWS = buildRows();
     changed = true;
   }
 
