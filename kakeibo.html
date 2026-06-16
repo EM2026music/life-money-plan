@@ -216,6 +216,7 @@
     font-family: inherit;
     font-variant-numeric: tabular-nums;
   }
+  .who-input { min-width: 60px; max-width: 90px; }
   table.kakeibo-table input[type="number"] { text-align: right; }
   .fixed-grid input { font-variant-numeric: tabular-nums; }
   table.kakeibo-table input:focus, table.kakeibo-table select:focus {
@@ -496,7 +497,17 @@
 <script>
 const STORAGE_KEY = 'lifeMoneyKakeiboV1';
 const DEFAULT_CATEGORIES = ['食費','日用品','医療','教育','美容・衣類','レジャー・趣味','その他'];
-const WHO_OPTIONS = ['共通','パパ','ママ'];
+// 「誰が」の候補: 「共通」 + timelineの家族名。自由入力も可能(datalist)。
+function getWhoOptions() {
+  const base = ['共通'];
+  try {
+    const tl = JSON.parse(localStorage.getItem('lifeMoneyTimelineV1') || 'null');
+    if (tl && Array.isArray(tl.family)) {
+      tl.family.forEach(m => { if (m.name && !base.includes(m.name)) base.push(m.name); });
+    }
+  } catch (e) {}
+  return base;
+}
 const FIXED_COST_ITEMS = ['住居','電気','水道','ガス','通信','保険'];
 
 let data = loadData();
@@ -697,15 +708,20 @@ function renderTransactions() {
     tr.appendChild(dateTd);
 
     const whoTd = document.createElement('td');
-    const whoSelect = document.createElement('select');
-    WHO_OPTIONS.forEach(opt => {
-      const o = document.createElement('option');
-      o.value = opt; o.textContent = opt;
-      if (t.who === opt) o.selected = true;
-      whoSelect.appendChild(o);
+    const listId = 'whoList_' + t.id;
+    const datalist = document.createElement('datalist');
+    datalist.id = listId;
+    getWhoOptions().forEach(opt => {
+      const o = document.createElement('option'); o.value = opt; datalist.appendChild(o);
     });
-    whoSelect.addEventListener('change', () => { t.who = whoSelect.value; saveData(); });
-    whoTd.appendChild(whoSelect);
+    const whoInput = document.createElement('input');
+    whoInput.type = 'text';
+    whoInput.className = 'who-input';
+    whoInput.setAttribute('list', listId);
+    whoInput.value = t.who || '共通';
+    whoInput.addEventListener('input', () => { t.who = whoInput.value; saveData(); });
+    whoTd.appendChild(datalist);
+    whoTd.appendChild(whoInput);
     tr.appendChild(whoTd);
 
     const whereTd = document.createElement('td');
@@ -778,7 +794,7 @@ function renderTransactions() {
 function addTransaction() {
   const month = getMonthData(currentMonth);
   const firstCategory = categoryStore.categories[0] ? categoryStore.categories[0].name : '';
-  month.transactions.push({ date: '', who: '共通', where: '', amount: 0, what: '', category: firstCategory });
+  month.transactions.push({ date: '', who: getWhoOptions()[0] || '共通', where: '', amount: 0, what: '', category: firstCategory });
   saveData();
   renderTransactions();
   updateSummary();

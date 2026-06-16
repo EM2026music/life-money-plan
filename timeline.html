@@ -721,6 +721,9 @@
     <div id="resetSettingsBody" class="collapsible-body collapsed-section">
       <p class="empty-note">分類(大項目・項目)を初期状態に戻します。<strong>入力した金額データは消えません</strong>(各項目に入れた金額はそのまま保持されます)。分類をいじりすぎて元に戻したいときに使ってください。</p>
       <button class="del-investment-btn" id="resetCategoriesBtn">分類を初期状態に戻す</button>
+      <hr style="margin:16px 0; border:none; border-top:1px solid var(--border);">
+      <p class="empty-note" style="color:var(--neg);"><strong>⚠ 全データ完全リセット</strong> — 入力した金額・家計簿・分類・設定(家族構成以外)をすべて消去して白紙に戻します。やり直しはできません。</p>
+      <button class="del-investment-btn" id="resetAllDataBtn" style="background:var(--neg);color:#fff;border-color:var(--neg);">すべてのデータを消去して白紙に戻す</button>
     </div>
   </div>
 
@@ -1749,6 +1752,13 @@ document.getElementById('resetCategoriesBtn').addEventListener('click', () => {
   generateTable();
   generateMonthlyTable();
   alert('分類を初期状態に戻しました。金額データは保持されています。');
+});
+
+document.getElementById('resetAllDataBtn').addEventListener('click', () => {
+  if (!confirm('本当にすべてのデータを消去しますか?\n\n入力した金額・家計簿・分類・設定がすべて消えます。\nこの操作はやり直しできません。')) return;
+  if (!confirm('もう一度確認します。本当によろしいですか?')) return;
+  ['lifeMoneyTimelineV1','lifeMoneyKakeiboV1','lifeMoneyCategoriesV1','lifeMoneyProjectionV1'].forEach(k => localStorage.removeItem(k));
+  location.reload();
 });
 
 // --- データのバックアップ(書き出し/読み込み) ---
