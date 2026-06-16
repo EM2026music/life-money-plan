@@ -535,8 +535,9 @@
   td.event-name-cell {
     color: var(--accent);
     font-size: 12px;
-    white-space: nowrap;
     font-weight: 600;
+    vertical-align: top;
+    padding-top: 3px;
   }
   .event-cell-input {
     width: 92px;
@@ -2077,7 +2078,12 @@ function addInvestmentInline() {
 }
 
 function addLifeEventInline() {
-  data.lifeEvents.push({ id: 'ev' + Date.now(), name: 'イベント', year: data.startYear, amount: 0 });
+  const nextYear = (() => {
+    const used = new Set(data.lifeEvents.map(e => e.year));
+    const years = getYears();
+    return years.find(y => !used.has(y)) || years[years.length - 1];
+  })();
+  data.lifeEvents.push({ id: 'ev' + Date.now(), name: 'イベント', year: nextYear, amount: 0 });
   saveData();
   renderLifeEventSettings();
   recalcAll();
