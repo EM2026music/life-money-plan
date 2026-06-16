@@ -242,6 +242,24 @@
     font-family: inherit;
   }
   .add-btn:hover { background: var(--section-bg); }
+  .reflect-box { margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--border); }
+  .reflect-lead { font-size: 13px; color: var(--text); margin-bottom: 10px; }
+  .reflect-btns { display: flex; gap: 10px; flex-wrap: wrap; }
+  .btn-reflect {
+    border: none;
+    background: var(--accent);
+    color: #fff;
+    border-radius: 9px;
+    padding: 12px 22px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    box-shadow: 0 2px 8px rgba(56,182,211,0.40);
+    transition: background .12s, transform .08s;
+  }
+  .btn-reflect:hover { background: #2596b5; }
+  .btn-reflect:active { transform: translateY(1px); }
 
   .empty-note {
     font-size: 12px;
@@ -431,7 +449,6 @@
     <a href="timeline.html#yearly">📈 年次タイムライン</a>
     <a href="timeline.html#monthly">📅 月次キャッシュフロー</a>
     <a href="kakeibo.html" class="active">📒 家計簿</a>
-    <a href="index.html" class="sidebar-sub">💹 投資シミュレーション</a>
   </nav>
   <h1>家計簿</h1>
   <p class="subtitle">月ごとの支出記録と固定費を管理します</p>
@@ -441,6 +458,18 @@
       <button id="prevMonth">‹ 前月</button>
       <span class="month-label" id="monthLabel"></span>
       <button id="nextMonth">次月 ›</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>月合計</h2>
+    <div class="summary-grid" id="summaryGrid"></div>
+    <div class="reflect-box">
+      <div class="reflect-lead">この月の合計（固定費込み）を <strong>人生キャッシュフロー</strong> に反映：</div>
+      <div class="reflect-btns">
+        <button class="btn-reflect" id="reflectThisMonthBtn">今月だけ反映</button>
+        <button class="btn-reflect" id="reflectFromThisMonthBtn">今月以降ずっと反映</button>
+      </div>
     </div>
   </div>
 
@@ -469,18 +498,6 @@
       </table>
     </div>
     <button class="add-btn" id="addTransaction">+ 行を追加</button>
-  </div>
-
-  <div class="card">
-    <h2>月合計</h2>
-    <div class="summary-grid" id="summaryGrid"></div>
-    <div class="result-line" style="margin-top:12px;">
-      この月の分類別合計(固定費も含む)を人生キャッシュフローに反映します。
-      <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
-        <button class="add-btn" id="reflectThisMonthBtn" style="margin-top:0;">①今月の金額のみフローに反映</button>
-        <button class="add-btn" id="reflectFromThisMonthBtn" style="margin-top:0;">②今月以降すべてに反映</button>
-      </div>
-    </div>
   </div>
 
   <div class="card">
