@@ -1187,6 +1187,7 @@ function buildInvestmentRows() {
     return rows;
   }
   data.investments.forEach(inv => {
+    rows.push({ id: `inv_${inv.id}_initbal`, label: `${inv.name} 初期保有額`, type: 'initbal', invId: inv.id });
     rows.push({ id: `inv_${inv.id}_contrib`, label: `${inv.name} 積立額`, type: 'editable', default: 0, forwardFill: 'full', invId: inv.id });
     rows.push({ id: `inv_${inv.id}_rate`, label: `${inv.name} 年率(%)`, type: 'editable', default: inv.rate, forwardFill: 'full', invId: inv.id, isRate: true });
     rows.push({ id: `inv_${inv.id}_balance`, label: `${inv.name} 残高`, type: 'computed', invId: inv.id });
@@ -1575,7 +1576,7 @@ function renderInvestmentSettings() {
     row.innerHTML = `
       <input type="text" class="inv-name" value="${inv.name}" data-id="${inv.id}">
       <label>年率%<input type="number" class="inv-rate" value="${inv.rate}" step="0.1" data-id="${inv.id}"></label>
-      <label>初期残高(円)<input type="number" class="inv-balance" value="${toYen(inv.initialBalance)}" data-id="${inv.id}"></label>
+      <label>初期保有額(円)<input type="number" class="inv-balance" value="${toYen(inv.initialBalance)}" data-id="${inv.id}"></label>
       <button class="del-investment-btn" data-id="${inv.id}">削除</button>
     `;
     container.appendChild(row);
@@ -2472,6 +2473,24 @@ function generateTable() {
         amtInput.addEventListener('blur', () => { const n = parseInt(amtInput.value.replace(/[^0-9]/g, '')) || 0; amtInput.value = n ? n.toLocaleString() : ''; });
         amtInput.addEventListener('change', e => onEventAmountChange(parseInt(e.target.dataset.evYear), e.target.value));
         td.appendChild(amtInput);
+      } else if (row.type === 'initbal') {
+        // 初期保有額(今すでに持っている額)は開始年の1セルだけ入力可。他の年は「—」。
+        if (year === years[0]) {
+          const inv = data.investments.find(i => i.id === row.invId);
+          const input = document.createElement('input');
+          input.className = 'cell-input';
+          input.type = 'text';
+          input.dataset.invInitbal = row.invId;
+          input.value = formatInputYen(inv ? inv.initialBalance : 0);
+          input.title = '今すでに持っている額（開始時点の残高）';
+          attachMoneyInputFormat(input);
+          input.addEventListener('input', onInitBalInput);
+          td.appendChild(input);
+        } else {
+          td.style.color = 'var(--text-light)';
+          td.style.textAlign = 'center';
+          td.textContent = '—';
+        }
       } else {
         const input = document.createElement('input');
         input.className = row.type === 'text' ? 'cell-input event-input' : 'cell-input';
@@ -2568,6 +2587,18 @@ function onCellInput(e) {
   recalcAll();
 }
 
+// 投資の「初期保有額」セル(開始年)の入力。inv.initialBalance(万円)に保存し、設定パネルとも同期。
+function onInitBalInput(e) {
+  const invId = e.target.dataset.invInitbal;
+  const inv = data.investments.find(i => i.id === invId);
+  if (!inv) return;
+  inv.initialBalance = parseYenInput(e.target.value);
+  saveData();
+  const setInput = document.querySelector(`.inv-balance[data-id="${invId}"]`);
+  if (setInput && setInput !== document.activeElement) setInput.value = toYen(inv.initialBalance);
+  recalcAll();
+}
+
 // ライフイベント行のセルに直接イベント名を入力したとき。その年のイベントを作成/更新/削除する。
 // (金額は「ライフイベントの設定」で設定。グリッドからは名前のみ編集)
 function onEventNameChange(e) {
@@ -2609,6 +2640,11 @@ function updateInputCells(years) {
       }
       input.classList.toggle('inherited', isInherited(row.id, year));
     });
+  });
+  // グリッドの「初期保有額」セルを inv.initialBalance と同期(設定パネルで変えた時用)
+  data.investments.forEach(inv => {
+    const input = document.querySelector(`#timelineBody input[data-inv-initbal="${inv.id}"]`);
+    if (input && input !== document.activeElement) input.value = formatInputYen(inv.initialBalance);
   });
 }
 
