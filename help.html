@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>使い方ガイド - デザイン４ライフ</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2338b6d3'/%3E%3Cpolyline points='10,44 24,32 36,38 54,16' fill='none' stroke='white' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #eef7fb;
+    --card-bg: #ffffff;
+    --border: #d4e8f0;
+    --text: #2c3a42;
+    --text-light: #7c8d97;
+    --accent: #38b6d3;
+    --accent-line: #7ed3e8;
+    --section-bg: #e2f3fa;
+    --neg: #d9534f;
+  }
+  * { box-sizing: border-box; }
+  body { font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+  body {
+    margin: 0;
+    font-family: "Hiragino Sans", "Yu Gothic", "Segoe UI", system-ui, sans-serif;
+    background: linear-gradient(180deg, #f4fbfe 0%, var(--bg) 280px) fixed;
+    color: var(--text);
+    padding: 24px;
+    padding-left: 244px;
+  }
+  .page { max-width: 1000px; margin: 0 auto; }
+  h1 {
+    font-size: 24px;
+    margin: 0 0 4px;
+    color: var(--accent);
+    border-bottom: 3px solid var(--accent-line);
+    padding-bottom: 8px;
+    display: inline-block;
+  }
+  .subtitle { color: var(--text-light); font-size: 14px; margin: 0 0 20px; }
+  /* 左サイドバー */
+  .sidebar {
+    position: fixed; top: 0; left: 0; width: 220px; height: 100vh;
+    background: var(--card-bg); border-right: 3px solid var(--accent);
+    box-shadow: 2px 0 10px rgba(56,182,211,0.10); padding: 22px 0; z-index: 100; overflow-y: auto;
+  }
+  .sidebar-title {
+    display: block; font-size: 14px; font-weight: 700; color: var(--accent);
+    padding: 0 20px 16px; border-bottom: 1px solid var(--border); margin-bottom: 10px;
+  }
+  .sidebar a {
+    display: block; padding: 13px 18px; font-size: 14px; font-weight: 600;
+    color: var(--text); text-decoration: none; border-left: 3px solid transparent;
+    transition: background .12s; white-space: nowrap;
+  }
+  .sidebar a:hover { background: var(--section-bg); }
+  .sidebar a.active {
+    color: var(--accent); background: var(--section-bg);
+    border-left-color: var(--accent); font-weight: 700;
+  }
+  .sidebar a.sidebar-sub { font-size: 13px; font-weight: 500; color: var(--text-light); margin-top: 14px; }
+  @media (max-width: 768px) {
+    .sidebar {
+      position: static; width: auto; height: auto; border-right: none;
+      border-bottom: 3px solid var(--accent); box-shadow: none; display: flex;
+      flex-wrap: wrap; gap: 2px; padding: 8px; margin-bottom: 12px;
+    }
+    .sidebar-title { display: none; }
+    .sidebar a { padding: 8px 12px; font-size: 14px; border-left: none; border-radius: 6px; }
+    .sidebar a.sidebar-sub { margin-top: 0; }
+    body { padding-left: 16px; padding-right: 16px; }
+  }
+  .card {
+    background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px;
+    padding: 18px 22px; box-shadow: 0 1px 2px rgba(44,58,66,0.04), 0 8px 24px rgba(44,58,66,0.05);
+    margin-bottom: 16px;
+  }
+  .card h2 {
+    font-size: 16px; margin: 0 0 14px; padding: 1px 0 1px 11px;
+    border-left: 4px solid var(--accent); border-radius: 2px;
+  }
+  .lead { font-size: 14px; line-height: 1.8; margin: 0 0 10px; }
+  .roles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 12px; }
+  .role { background: var(--section-bg); border-radius: 12px; padding: 12px 14px; }
+  .role b { display: block; font-size: 14px; color: var(--accent); margin-bottom: 4px; }
+  .role span { font-size: 12px; color: var(--text-light); line-height: 1.6; }
+  /* ステップ */
+  .step { display: flex; gap: 14px; align-items: flex-start; padding: 14px 0; border-bottom: 1px dashed var(--border); }
+  .step:last-child { border-bottom: none; }
+  .step-num {
+    flex: 0 0 auto; width: 30px; height: 30px; border-radius: 50%;
+    background: var(--accent); color: #fff; font-weight: 800; font-size: 15px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .step-body { flex: 1; min-width: 0; }
+  .step-body h3 { margin: 2px 0 6px; font-size: 16px; color: var(--text); }
+  .step-body p { font-size: 14px; color: var(--text); line-height: 1.75; margin: 0 0 6px; }
+  .step-body ul { margin: 6px 0; padding-left: 20px; }
+  .step-body li { font-size: 14px; color: var(--text); line-height: 1.8; }
+  .pill { display: inline-block; background: var(--section-bg); color: var(--accent); border-radius: 6px; padding: 1px 9px; font-size: 13px; font-weight: 700; }
+  .btnlike { display: inline-block; background: var(--accent); color: #fff; border-radius: 7px; padding: 2px 11px; font-size: 13px; font-weight: 700; }
+  .hint { background: #f0f9fc; border-left: 3px solid var(--accent); padding: 9px 13px; border-radius: 6px; font-size: 13px; color: var(--text-light); line-height: 1.7; margin: 8px 0 0; }
+  .warn { background: #fff7e6; border: 1px solid #ffd591; color: #8a5a00; border-radius: 10px; padding: 14px 16px; font-size: 14px; line-height: 1.8; }
+  .warn b { color: #8a5a00; }
+  .qa { padding: 10px 0; border-bottom: 1px dashed var(--border); }
+  .qa:last-child { border-bottom: none; }
+  .qa .q { font-weight: 700; color: var(--text); font-size: 14px; }
+  .qa .a { font-size: 14px; color: var(--text-light); margin-top: 4px; line-height: 1.75; }
+  .start-link {
+    display: inline-block; margin-top: 6px; background: var(--accent); color: #fff;
+    text-decoration: none; border-radius: 10px; padding: 12px 24px; font-size: 15px; font-weight: 700;
+    box-shadow: 0 2px 8px rgba(56,182,211,0.40);
+  }
+  .start-link:hover { background: #2596b5; }
+</style>
+</head>
+<body>
+<div class="page">
+  <nav class="sidebar">
+    <div class="sidebar-title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 210 60" width="172" style="display:block">
+      <defs>
+        <linearGradient id="d4l-sw" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#2b8ee0"/>
+          <stop offset="100%" stop-color="#80d4f8"/>
+        </linearGradient>
+      </defs>
+      <text font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif" font-weight="800">
+        <tspan x="2" y="40" font-size="32" fill="#172246">Design</tspan><tspan font-size="32" fill="#4aacf5" dx="2"> 4 </tspan><tspan font-size="32" fill="#172246">Life</tspan>
+      </text>
+      <path d="M2,52 C60,65 140,58 208,45" stroke="url(#d4l-sw)" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+    </svg></div>
+    <a href="top.html">🏠 TOP</a>
+    <a href="timeline.html#yearly">📈 年次タイムライン</a>
+    <a href="timeline.html#monthly">📅 月次キャッシュフロー</a>
+    <a href="kakeibo.html">📒 家計簿</a>
+    <a href="help.html" class="active sidebar-sub">❓ 使い方</a>
+  </nav>
+
+  <h1>使い方ガイド</h1>
+  <p class="subtitle">はじめての方へ。3ステップで未来のお金が見えるようになります。</p>
+
+  <div class="card">
+    <h2>デザイン４ライフって何？</h2>
+    <p class="lead">収入・支出・投資・ライフイベントを入れると、<b>これから何十年分のお金の流れ</b>が表とグラフで見えるツールです。「家は買える？」「何歳で仕事を辞められる？」を数字で確かめられます。</p>
+    <p class="lead">入力したデータは <b>あなたの端末（ブラウザ）の中だけ</b> に保存されます。登録もメールも不要。外部には一切送信されません。</p>
+    <div class="roles">
+      <div class="role"><b>📈 年次タイムライン</b><span>家族・収入・支出・投資を入れて、将来の資産を予測する“メインの画面”</span></div>
+      <div class="role"><b>📅 月次キャッシュフロー</b><span>1年を月ごとに割って、月単位の収支を細かく見る画面</span></div>
+      <div class="role"><b>📒 家計簿</b><span>毎月の実際の支出を記録する画面。予測のベースになる</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>かんたん 3ステップ</h2>
+
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <h3>年次タイムラインで「基本情報」を入れる</h3>
+        <p>左メニューの <span class="pill">📈 年次タイムライン</span> を開きます。水色の帯にある <span class="btnlike">＋</span> ボタンで、項目を追加できます。</p>
+        <ul>
+          <li><b>年齢</b>の帯の＋ … 家族を追加（パパ・ママ・子どもなど）して、生まれ年を入力</li>
+          <li><b>収入</b>の帯の＋ … 給料などの収入を追加して、金額を入力</li>
+          <li><b>支出</b>の帯の＋ … 食費・住居費などの項目を追加して、金額を入力</li>
+        </ul>
+        <p class="hint">金額は一度入れると<b>翌年以降も自動で引き継がれます</b>（薄い文字＝前の年から引き継いだ値）。変わる年だけ上書きすればOKです。</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <h3>投資・保険・ライフイベントを入れる（任意）</h3>
+        <ul>
+          <li><b>投資</b> … <span class="pill">初期保有額</span>（今すでに持っている株などの額）＋<span class="pill">積立額</span>（これから積み立てる額）＋<span class="pill">年率(%)</span> を入れると、複利で残高が伸びていきます</li>
+          <li><b>保険</b> … 年間の保険料を入力</li>
+          <li><b>ライフイベント</b> … 住宅購入・車の買い替え・旅行などを、起こる年と金額で入力</li>
+        </ul>
+        <p class="hint">「今持っている貯金」は、年次タイムラインの基本情報にある<b>現在の資産</b>に入れてください。</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <h3>家計簿で毎月の支出を記録 → 未来に反映</h3>
+        <p>左メニューの <span class="pill">📒 家計簿</span> を開きます。<b>前月／次月</b>で月を移動し、<span class="btnlike">＋行を追加</span> で買ったものを1件ずつ入力。固定費（家賃・光熱費など）も入れられます。</p>
+        <p>入力したら、上の方にある濃い水色のボタンで人生キャッシュフローに反映します：</p>
+        <ul>
+          <li><span class="btnlike">今月だけ反映</span> … その月の合計だけを予測に反映</li>
+          <li><span class="btnlike">今月以降ずっと反映</span> … 来月以降の毎月の基準額として反映</li>
+        </ul>
+        <p class="hint">これで「実際に使った金額」が、そのまま将来予測のベースになります。家計簿の分類は年次タイムラインの支出と共通です。</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">✓</div>
+      <div class="step-body">
+        <h3>グラフで未来を確認</h3>
+        <p>年次タイムラインの下にある<b>資産推移グラフ</b>で、現金・投資・総資産がこの先どう動くかが一目で分かります。いつ資産が増え、いつ減るのか、底をつかないかを確認しましょう。数字を変えれば、未来も変わります。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>⚠ いちばん大事：バックアップ</h2>
+    <div class="warn">
+      データは <b>この端末のブラウザの中だけ</b> に保存されています。便利な反面、<b>ブラウザの「閲覧データの削除」をすると消えてしまいます</b>。<br><br>
+      定期的に <span class="pill">📈 年次タイムライン</span> → 下の方の <b>「データのバックアップ」</b> → <b>「バックアップを書き出す」</b> でファイルに保存しておきましょう。<br>
+      別のパソコン・スマホに移すときや、もし消えてしまったときは、同じ画面の <b>「バックアップを読み込む」</b> で元に戻せます。
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>よくある質問</h2>
+    <div class="qa">
+      <div class="q">Q. 入力したデータはどこに保存されますか？</div>
+      <div class="a">A. お使いの端末のブラウザ内（localStorage）だけです。サーバーや外部には一切送信されません。</div>
+    </div>
+    <div class="qa">
+      <div class="q">Q. 別のパソコンやスマホでも使えますか？</div>
+      <div class="a">A. はい。「バックアップを書き出す」でファイルを保存し、移動先の端末で「バックアップを読み込む」と引き継げます。</div>
+    </div>
+    <div class="qa">
+      <div class="q">Q. 金額の単位は？</div>
+      <div class="a">A. すべて「円」です。</div>
+    </div>
+    <div class="qa">
+      <div class="q">Q. 家計簿の「誰が」に家族の名前を出したい</div>
+      <div class="a">A. 年次タイムラインで家族を追加・改名すると、家計簿の「誰が」のプルダウンにも自動で出てきます（直接入力もできます）。</div>
+    </div>
+    <div class="qa">
+      <div class="q">Q. 全部消してやり直したい</div>
+      <div class="a">A. TOPページの下の方にある「全データ消去」から白紙に戻せます（やり直しはできないので注意）。</div>
+    </div>
+  </div>
+
+  <div class="card" style="text-align:center;">
+    <p class="lead" style="margin-bottom:4px;">準備ができたら、さっそく始めましょう。</p>
+    <a class="start-link" href="timeline.html#yearly">📈 年次タイムラインを開く</a>
+  </div>
+</div>
+</body>
+</html>
