@@ -2010,6 +2010,12 @@ function addIncomeItem() {
 
 // --- セクションヘッダー＋ボタンからの追加 ---
 function handleSectionAdd(type) {
+  const sectionNameMap = {
+    family: '年齢', income: '収入（円/年）', expenseGroup: '支出（円/年）',
+    insurance: '保険（円/年）', investment: '投資資産（円/年）', event: 'ライフイベント'
+  };
+  const secName = sectionNameMap[type];
+  if (secName) collapsedSections.delete(secName);
   if (type === 'family') addFamilyMemberInline();
   else if (type === 'income') addIncomeItem();
   else if (type === 'expenseGroup') addExpenseGroupInline();
@@ -2042,6 +2048,8 @@ function addSubCategoryToGroup(groupId) {
   const id = 'cat' + Date.now() + Math.floor(Math.random() * 10000);
   categoryStore.categories.push({ id, name: '新しい項目', groupId });
   saveCategoryStore(categoryStore);
+  ensureCollapsedExpenseGroups();
+  collapsedExpenseGroups.delete(groupId);
   ROWS = buildRows();
   generateTable();
   generateMonthlyTable();
