@@ -1180,6 +1180,7 @@ function buildInvestmentRows() {
   }
   data.investments.forEach(inv => {
     rows.push({ id: `inv_${inv.id}_contrib`, label: `${inv.name} 積立額`, type: 'editable', default: 0, forwardFill: 'full', invId: inv.id });
+    rows.push({ id: `inv_${inv.id}_rate`, label: `${inv.name} 年率(%)`, type: 'editable', default: inv.rate, forwardFill: 'full', invId: inv.id, isRate: true });
     rows.push({ id: `inv_${inv.id}_balance`, label: `${inv.name} 残高`, type: 'computed', invId: inv.id });
   });
   return rows;
@@ -1587,6 +1588,7 @@ function renderInvestmentSettings() {
       const inv = data.investments.find(i => i.id === e.target.dataset.id);
       inv.rate = parseFloat(e.target.value) || 0;
       saveData();
+      ROWS = buildRows();
       recalcAll();
     });
     el.addEventListener('wheel', () => el.blur());
@@ -2014,12 +2016,14 @@ function deleteIncomeItem(id) {
 }
 
 function addIncomeItem() {
-  data.incomeItems.push({ id: 'inc' + Date.now() + Math.floor(Math.random() * 10000), name: '新しい収入' });
+  const incId = 'inc' + Date.now() + Math.floor(Math.random() * 10000);
+  data.incomeItems.push({ id: incId, name: '新しい収入' });
   saveData();
   ROWS = buildRows();
   generateTable();
   generateMonthlyTable();
   renderIncomeSettings();
+  scrollToNewRow(incId);
 }
 
 // --- セクションヘッダー＋ボタンからの追加 ---
@@ -2041,21 +2045,24 @@ function handleSectionAdd(type) {
 function addFamilyMemberInline() {
   if (data.family.length >= MAX_FAMILY) { alert('家族は最大10人まで追加できます'); return; }
   const n = data.family.length + 1;
-  data.family.push({ id: 'mem' + Date.now(), name: '家族' + n, type: 'adult', birth: null });
+  const memId = 'mem' + Date.now();
+  data.family.push({ id: memId, name: '家族' + n, type: 'adult', birth: null });
   saveData();
   ROWS = buildRows();
   generateTable();
   generateMonthlyTable();
+  scrollToNewRow('age_' + memId);
 }
 
 function addExpenseGroupInline() {
-  const id = 'grp' + Date.now();
-  categoryStore.groups.push({ id, name: '新しい大項目' });
+  const grpId = 'grp' + Date.now();
+  categoryStore.groups.push({ id: grpId, name: '新しい大項目' });
   saveCategoryStore(categoryStore);
   ROWS = buildRows();
   generateTable();
   generateMonthlyTable();
   renderCategorySettings();
+  scrollToNewRow('catgrp_' + grpId);
 }
 
 function addSubCategoryToGroup(groupId) {
@@ -2072,22 +2079,26 @@ function addSubCategoryToGroup(groupId) {
 
 function addInsuranceInline() {
   const n = data.insurances.length + 1;
-  data.insurances.push({ id: 'ins' + Date.now(), name: '保険' + n, payoutYear: null, payoutAmount: 0 });
+  const insId = 'ins' + Date.now();
+  data.insurances.push({ id: insId, name: '保険' + n, payoutYear: null, payoutAmount: 0 });
   saveData();
   ROWS = buildRows();
   renderInsuranceSettings();
   generateTable();
   generateMonthlyTable();
+  scrollToNewRow('ins_' + insId + '_premium');
 }
 
 function addInvestmentInline() {
   const n = data.investments.length + 1;
-  data.investments.push({ id: 'inv' + Date.now(), name: '投資' + n, rate: 5, initialBalance: 0 });
+  const invId = 'inv' + Date.now();
+  data.investments.push({ id: invId, name: '投資' + n, rate: 5, initialBalance: 0 });
   saveData();
   ROWS = buildRows();
   renderInvestmentSettings();
   generateTable();
   generateMonthlyTable();
+  scrollToNewRow('inv_' + invId + '_contrib');
 }
 
 function addLifeEventInline() {
@@ -2459,7 +2470,12 @@ function generateTable() {
         input.type = 'text';
         input.dataset.rowId = row.id;
         input.dataset.year = year;
-        if (row.type === 'editable') {
+        if (row.type === 'editable' && row.isRate) {
+          input.value = getYearlyEffectiveValue(row.id, year);
+          input.classList.toggle('inherited', isInherited(row.id, year));
+          input.style.textAlign = 'right';
+          input.title = '年率（%）';
+        } else if (row.type === 'editable') {
           input.value = formatInputYen(getYearlyEffectiveValue(row.id, year));
           input.classList.toggle('inherited', isInherited(row.id, year));
           attachMoneyInputFormat(input);
@@ -2524,11 +2540,18 @@ window.addEventListener('resize', () => {
   __freezeResizeTimer = setTimeout(applyYearlyFreeze, 150);
 });
 
+function scrollToNewRow(rowId) {
+  requestAnimationFrame(() => {
+    const tr = document.querySelector(`#timelineBody tr[data-row-id="${rowId}"]`);
+    if (tr) tr.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  });
+}
+
 function onCellInput(e) {
   const rowId = e.target.dataset.rowId;
   const year = parseInt(e.target.dataset.year);
   const row = ROWS.find(r => r.id === rowId);
-  const value = row.type === 'text' ? e.target.value : parseYenInput(e.target.value);
+  const value = row.type === 'text' ? e.target.value : row.isRate ? (parseFloat(e.target.value) || 0) : parseYenInput(e.target.value);
   setCellValue(rowId, year, value);
   // 継続(forwardFill:'full')の行だけ、編集年より後ろをクリアして「以降ずっとこの値」にする。
   // 一時金(forwardFill:'none'。保険受取など)は各年が独立なので後ろをクリアしない。
@@ -2571,7 +2594,11 @@ function updateInputCells(years) {
     years.forEach(year => {
       const input = document.querySelector(`#timelineBody input[data-row-id="${row.id}"][data-year="${year}"]`);
       if (!input || input === document.activeElement) return;
-      input.value = formatInputYen(getYearlyEffectiveValue(row.id, year));
+      if (row.isRate) {
+        input.value = getYearlyEffectiveValue(row.id, year);
+      } else {
+        input.value = formatInputYen(getYearlyEffectiveValue(row.id, year));
+      }
       input.classList.toggle('inherited', isInherited(row.id, year));
     });
   });
@@ -2598,8 +2625,8 @@ function initMonthlyYearSelect() {
 // 支出の大項目の集計・開閉行(catgrp_*)も年次と同じ並びで含める。
 function getMonthlyRows() {
   return ROWS.filter(r =>
-    (r.type === 'editable' && r.forwardFill !== undefined) ||
-    (r.id && r.id.startsWith('catgrp_'))
+    ((r.type === 'editable' && r.forwardFill !== undefined && !r.isRate) ||
+    (r.id && r.id.startsWith('catgrp_')))
   );
 }
 
@@ -2624,17 +2651,25 @@ function generateMonthlyTable() {
   // 年次と同じように、収入・支出・保険・投資などをセクション(水色帯)で分けて表示する。
   let pendingSection = null;
   ROWS.forEach(row => {
-    if (row.section) { pendingSection = row.section; return; }
-    const isMonthly = (row.type === 'editable' && row.forwardFill !== undefined) || (row.id && row.id.startsWith('catgrp_'));
+    if (row.section) { pendingSection = row; return; }
+    const isMonthly = (row.type === 'editable' && row.forwardFill !== undefined && !row.isRate) || (row.id && row.id.startsWith('catgrp_'));
     if (!isMonthly) return;
     if (pendingSection) {
-      const name = pendingSection.replace(/（.*?）/, '');
+      const name = pendingSection.section.replace(/（.*?）/, '');
       const sectr = document.createElement('tr');
       sectr.className = 'section-row';
       sectr.dataset.msection = name;
       const sectd = document.createElement('td');
       sectd.colSpan = 14;
-      sectd.textContent = name;
+      if (pendingSection.sectionType) {
+        const addBtn = document.createElement('button');
+        addBtn.type = 'button';
+        addBtn.className = 'section-add-btn';
+        addBtn.dataset.sectionType = pendingSection.sectionType;
+        addBtn.textContent = '＋';
+        sectd.appendChild(addBtn);
+      }
+      sectd.appendChild(document.createTextNode(name));
       sectr.appendChild(sectd);
       body.appendChild(sectr);
       pendingSection = null;
@@ -2752,6 +2787,9 @@ function generateMonthlyTable() {
 
   body.querySelectorAll('.row-group-toggle').forEach(btn => {
     btn.addEventListener('click', () => toggleExpenseGroup(btn.dataset.groupId));
+  });
+  body.querySelectorAll('.section-add-btn').forEach(btn => {
+    btn.addEventListener('click', e => { e.stopPropagation(); handleSectionAdd(btn.dataset.sectionType); });
   });
 
   recalcMonthlyTable();
@@ -2914,7 +2952,8 @@ function recalcAll() {
       const balanceId = `inv_${inv.id}_balance`;
       const contrib = getYearlyEffectiveValue(contribId, year);
       investTotal += contrib;
-      const newBalance = prevBalances[inv.id] * (1 + inv.rate / 100) + contrib;
+      const rate = getYearlyEffectiveValue(`inv_${inv.id}_rate`, year);
+      const newBalance = prevBalances[inv.id] * (1 + rate / 100) + contrib;
       prevBalances[inv.id] = newBalance;
       investAssetsTotal += newBalance;
       setComputedCell(balanceId, year, newBalance);
