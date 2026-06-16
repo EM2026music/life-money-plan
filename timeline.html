@@ -551,6 +551,57 @@
   }
   .event-cell-input::placeholder { color: var(--text-light); font-weight: 400; opacity: .6; }
   .event-cell-input:focus { outline: 2px solid var(--accent); background: #fff; border-radius: 3px; }
+  .event-amount-input {
+    display: block;
+    width: 90px;
+    font-size: 11px;
+    color: var(--text-light);
+    border: none;
+    background: transparent;
+    text-align: right;
+    padding: 1px 2px;
+    font-family: inherit;
+    font-variant-numeric: tabular-nums;
+  }
+  .event-amount-input::placeholder { color: var(--text-light); opacity: .5; }
+  .event-amount-input:focus { outline: 2px solid var(--accent); background: #fff; border-radius: 3px; color: var(--text); }
+  .section-add-btn {
+    float: right;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    padding: 1px 7px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    line-height: 1.4;
+  }
+  .section-add-btn:hover { background: #2aa0bc; }
+  .label-add-btn {
+    border: none;
+    background: var(--accent);
+    color: #fff;
+    border-radius: 4px;
+    padding: 0 5px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity .15s;
+    vertical-align: middle;
+    margin-left: 2px;
+  }
+  .row-label:hover .label-add-btn { opacity: 1; }
+  tr.section-note-row td {
+    color: var(--text-light);
+    font-size: 12px;
+    font-style: italic;
+    font-weight: 400;
+    text-align: center;
+    padding: 4px 8px;
+    background: none;
+  }
 
   /* 簡易パスワードゲート */
   .auth-gate {
@@ -753,7 +804,7 @@ const STORAGE_KEY = 'lifeMoneyTimelineV1';
 // 家族の年齢行を data.family から動的に生成。家族は自由に追加・改名・削除できる(最大10人)。
 const MAX_FAMILY = 10;
 function buildAgeRows() {
-  const rows = [{ section: '年齢' }];
+  const rows = [{ section: '年齢', sectionType: 'family' }];
   data.family.forEach(m => {
     rows.push({ id: 'age_' + m.id, label: m.name, type: 'age', familyId: m.id, isChild: m.type === 'child' });
   });
@@ -761,13 +812,13 @@ function buildAgeRows() {
 }
 
 const EVENT_ROWS = [
-  { section: 'ライフイベント' },
+  { section: 'ライフイベント', sectionType: 'event' },
   { id: 'event', label: 'イベント', type: 'eventname' },
 ];
 
 // 収入の行を動的に生成。収入項目(data.incomeItems)は自由に追加・改名・削除できる。
 function buildIncomeRows() {
-  const rows = [{ section: '収入（円/年）' }];
+  const rows = [{ section: '収入（円/年）', sectionType: 'income' }];
   data.incomeItems.forEach(it => {
     // 保険受取は一時金(満期金など)が多いので継続しない。それ以外の収入は入れた年以降ずっと継続。
     const oneTime = it.id === 'incomeInsurance';
@@ -1107,8 +1158,11 @@ function lifeEventNames(year) {
 }
 
 function buildInvestmentRows() {
-  if (!data.investments.length) return [];
-  const rows = [{ section: '投資資産（円/年）' }];
+  const rows = [{ section: '投資資産（円/年）', sectionType: 'investment' }];
+  if (!data.investments.length) {
+    rows.push({ id: '_inv_empty', label: '（投資なし　右上の ＋ ボタンで追加）', type: 'note' });
+    return rows;
+  }
   data.investments.forEach(inv => {
     rows.push({ id: `inv_${inv.id}_contrib`, label: `${inv.name} 投資額`, type: 'editable', default: 0, forwardFill: 'full', invId: inv.id });
     rows.push({ id: `inv_${inv.id}_balance`, label: `${inv.name} 残高`, type: 'computed', invId: inv.id });
@@ -1117,8 +1171,11 @@ function buildInvestmentRows() {
 }
 
 function buildInsuranceRows() {
-  if (!data.insurances.length) return [];
-  const rows = [{ section: '保険（円/年）' }];
+  const rows = [{ section: '保険（円/年）', sectionType: 'insurance' }];
+  if (!data.insurances.length) {
+    rows.push({ id: '_ins_empty', label: '（保険なし　右上の ＋ ボタンで追加）', type: 'note' });
+    return rows;
+  }
   data.insurances.forEach(ins => {
     rows.push({ id: `ins_${ins.id}_premium`, label: `${ins.name} 保険料`, type: 'editable', default: 0, forwardFill: 'full', insId: ins.id });
   });
@@ -1156,7 +1213,7 @@ function buildRows() {
     ...buildAgeRows(),
     ...EVENT_ROWS,
     ...buildIncomeRows(),
-    { section: '支出（円/年）' },
+    { section: '支出（円/年）', sectionType: 'expenseGroup' },
     ...buildExpenseCategoryRows(),
     ...EXPENSE_SUMMARY_ROWS,
     ...buildInsuranceRows(),
@@ -1950,6 +2007,86 @@ function addIncomeItem() {
   renderIncomeSettings();
 }
 
+// --- セクションヘッダー＋ボタンからの追加 ---
+function handleSectionAdd(type) {
+  if (type === 'family') addFamilyMemberInline();
+  else if (type === 'income') addIncomeItem();
+  else if (type === 'expenseGroup') addExpenseGroupInline();
+  else if (type === 'insurance') addInsuranceInline();
+  else if (type === 'investment') addInvestmentInline();
+  else if (type === 'event') addLifeEventInline();
+}
+
+function addFamilyMemberInline() {
+  if (data.family.length >= MAX_FAMILY) { alert('家族は最大10人まで追加できます'); return; }
+  const n = data.family.length + 1;
+  data.family.push({ id: 'mem' + Date.now(), name: '家族' + n, type: 'adult', birth: null });
+  saveData();
+  ROWS = buildRows();
+  generateTable();
+  generateMonthlyTable();
+}
+
+function addExpenseGroupInline() {
+  const id = 'grp' + Date.now();
+  categoryStore.groups.push({ id, name: '新しい大項目' });
+  saveCategoryStore(categoryStore);
+  ROWS = buildRows();
+  generateTable();
+  generateMonthlyTable();
+  renderCategorySettings();
+}
+
+function addSubCategoryToGroup(groupId) {
+  const id = 'cat' + Date.now() + Math.floor(Math.random() * 10000);
+  categoryStore.categories.push({ id, name: '新しい項目', groupId });
+  saveCategoryStore(categoryStore);
+  ROWS = buildRows();
+  generateTable();
+  generateMonthlyTable();
+  renderCategorySettings();
+}
+
+function addInsuranceInline() {
+  const n = data.insurances.length + 1;
+  data.insurances.push({ id: 'ins' + Date.now(), name: '保険' + n, payoutYear: null, payoutAmount: 0 });
+  saveData();
+  ROWS = buildRows();
+  renderInsuranceSettings();
+  generateTable();
+  generateMonthlyTable();
+}
+
+function addInvestmentInline() {
+  const n = data.investments.length + 1;
+  data.investments.push({ id: 'inv' + Date.now(), name: '投資' + n, rate: 5, initialBalance: 0 });
+  saveData();
+  ROWS = buildRows();
+  renderInvestmentSettings();
+  generateTable();
+  generateMonthlyTable();
+}
+
+function addLifeEventInline() {
+  data.lifeEvents.push({ id: 'ev' + Date.now(), name: 'イベント', year: data.startYear, amount: 0 });
+  saveData();
+  renderLifeEventSettings();
+  recalcAll();
+}
+
+function onEventAmountChange(year, raw) {
+  const amount = fromYen(parseFloat(String(raw).replace(/[^0-9.\-]/g, '')) || 0);
+  const events = data.lifeEvents.filter(ev => ev.year === year);
+  if (events.length) {
+    events[0].amount = amount;
+  } else if (amount > 0) {
+    data.lifeEvents.push({ id: 'ev' + Date.now() + Math.floor(Math.random() * 10000), name: 'イベント', year, amount });
+  }
+  saveData();
+  renderLifeEventSettings();
+  recalcAll();
+}
+
 // --- 保険のグリッド上での改名・削除 ---
 function renameInsuranceInline(id, name) {
   const ins = data.insurances.find(x => x.id === id);
@@ -2069,6 +2206,13 @@ function buildEditableCategoryLabel(labelTd, row) {
     del.textContent = '✕';
     del.addEventListener('click', () => deleteGroupInline(row.groupId));
     labelTd.appendChild(del);
+    const addSub = document.createElement('button');
+    addSub.type = 'button';
+    addSub.className = 'label-add-btn';
+    addSub.title = 'この大項目に小項目を追加';
+    addSub.textContent = '＋';
+    addSub.addEventListener('click', () => addSubCategoryToGroup(row.groupId));
+    labelTd.appendChild(addSub);
     return;
   }
 
@@ -2174,7 +2318,25 @@ function generateTable() {
       tr.dataset.sectionRow = row.section;
       const td = document.createElement('td');
       td.colSpan = years.length + 1;
-      td.innerHTML = `<button type="button" class="section-toggle-btn" data-section="${row.section}">${collapsed ? '▶' : '▼'}</button>${row.section}`;
+      const addBtnHtml = row.sectionType
+        ? `<button type="button" class="section-add-btn" data-section-type="${row.sectionType}">＋</button>`
+        : '';
+      td.innerHTML = `<button type="button" class="section-toggle-btn" data-section="${row.section}">${collapsed ? '▶' : '▼'}</button>${row.section}${addBtnHtml}`;
+      tr.appendChild(td);
+      body.appendChild(tr);
+      return;
+    }
+
+    if (row.type === 'note') {
+      const tr = document.createElement('tr');
+      tr.className = 'section-note-row';
+      if (currentSection) {
+        tr.dataset.section = currentSection;
+        if (collapsedSections.has(currentSection)) tr.classList.add('sec-hidden');
+      }
+      const td = document.createElement('td');
+      td.colSpan = years.length + 1;
+      td.textContent = row.label;
       tr.appendChild(td);
       body.appendChild(tr);
       return;
@@ -2246,10 +2408,23 @@ function generateTable() {
         evInput.dataset.rowId = row.id;
         evInput.dataset.year = year;
         evInput.value = lifeEventNames(year);
-        evInput.placeholder = '行事';
-        evInput.title = 'この年のライフイベント名を入力(金額は「ライフイベントの設定」で)';
+        evInput.placeholder = '行事名';
+        evInput.title = 'この年のライフイベント名';
         evInput.addEventListener('change', onEventNameChange);
         td.appendChild(evInput);
+        const costYen = toYen(lifeEventCost(year));
+        const amtInput = document.createElement('input');
+        amtInput.className = 'event-amount-input';
+        amtInput.type = 'text';
+        amtInput.setAttribute('inputmode', 'numeric');
+        amtInput.dataset.evYear = year;
+        amtInput.placeholder = '金額(円)';
+        amtInput.value = costYen ? costYen.toLocaleString() : '';
+        amtInput.title = 'この年のイベント費';
+        amtInput.addEventListener('focus', () => { amtInput.value = amtInput.value.replace(/[,，\s]/g, ''); amtInput.select(); });
+        amtInput.addEventListener('blur', () => { const n = parseInt(amtInput.value.replace(/[^0-9]/g, '')) || 0; amtInput.value = n ? n.toLocaleString() : ''; });
+        amtInput.addEventListener('change', e => onEventAmountChange(parseInt(e.target.dataset.evYear), e.target.value));
+        td.appendChild(amtInput);
       } else {
         const input = document.createElement('input');
         input.className = row.type === 'text' ? 'cell-input event-input' : 'cell-input';
@@ -2280,6 +2455,9 @@ function generateTable() {
   });
   body.querySelectorAll('.section-toggle-btn').forEach(btn => {
     btn.addEventListener('click', () => toggleSection(btn.dataset.section));
+  });
+  body.querySelectorAll('.section-add-btn').forEach(btn => {
+    btn.addEventListener('click', e => { e.stopPropagation(); handleSectionAdd(btn.dataset.sectionType); });
   });
 
   applyYearlyFreeze();
@@ -2688,6 +2866,11 @@ function recalcAll() {
 
     const evInput = document.querySelector(`#timelineBody input[data-row-id="event"][data-year="${year}"]`);
     if (evInput && evInput !== document.activeElement) evInput.value = lifeEventNames(year);
+    const evAmtInput = document.querySelector(`#timelineBody .event-amount-input[data-ev-year="${year}"]`);
+    if (evAmtInput && evAmtInput !== document.activeElement) {
+      const c = toYen(lifeEventCost(year));
+      evAmtInput.value = c ? c.toLocaleString() : '';
+    }
 
     categoryStore.groups.forEach(group => {
       const cats = categoryStore.categories.filter(c => c.groupId === group.id);
