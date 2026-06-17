@@ -2741,7 +2741,7 @@ function generateMonthlyTable() {
   let pendingSection = null;
   ROWS.forEach(row => {
     if (row.section) { pendingSection = row; return; }
-    const isMonthly = (row.type === 'editable' && row.forwardFill !== undefined && !row.isRate) || (row.id && row.id.startsWith('catgrp_'));
+    const isMonthly = (row.type === 'editable' && row.forwardFill !== undefined && !row.isRate) || (row.id && row.id.startsWith('catgrp_')) || row.type === 'invhead';
     if (!isMonthly) return;
     if (pendingSection) {
       const name = pendingSection.section.replace(/（.*?）/, '');
@@ -2750,15 +2750,18 @@ function generateMonthlyTable() {
       sectr.dataset.msection = name;
       const sectd = document.createElement('td');
       sectd.colSpan = 14;
+      const inner = document.createElement('span');
+      inner.className = 'section-inner';
       if (pendingSection.sectionType) {
         const addBtn = document.createElement('button');
         addBtn.type = 'button';
         addBtn.className = 'section-add-btn';
         addBtn.dataset.sectionType = pendingSection.sectionType;
         addBtn.textContent = '＋';
-        sectd.appendChild(addBtn);
+        inner.appendChild(addBtn);
       }
-      sectd.appendChild(document.createTextNode(name));
+      inner.appendChild(document.createTextNode(name));
+      sectd.appendChild(inner);
       sectr.appendChild(sectd);
       body.appendChild(sectr);
       pendingSection = null;
@@ -2766,6 +2769,20 @@ function generateMonthlyTable() {
 
     const tr = document.createElement('tr');
     tr.dataset.rowId = row.id;
+
+    if (row.type === 'invhead') {
+      tr.className = 'invhead-row';
+      const labelTd = document.createElement('td');
+      labelTd.className = 'row-label';
+      buildEditableCategoryLabel(labelTd, row);
+      tr.appendChild(labelTd);
+      const baseTd = document.createElement('td');
+      baseTd.className = 'base-cell';
+      tr.appendChild(baseTd);
+      for (let m = 1; m <= 12; m++) tr.appendChild(document.createElement('td'));
+      body.appendChild(tr);
+      return;
+    }
 
     if (row.id.startsWith('catgrp_') && !row.grpDirect) {
       tr.className = 'computed-row';
@@ -2799,11 +2816,12 @@ function generateMonthlyTable() {
 
     const labelTd = document.createElement('td');
     labelTd.className = 'row-label';
-    if (row.catId !== undefined || row.grpDirect || row.incItem || row.insId || (row.invId && row.id.endsWith('_contrib'))) {
-      // 分類・直接入力大項目・収入項目・保険・投資: 名前をその場で編集・削除できる + リセット
+    if (row.catId !== undefined || row.grpDirect || row.incItem || row.insId) {
+      // 分類・直接入力大項目・収入項目・保険: 名前をその場で編集・削除できる + リセット
       buildEditableCategoryLabel(labelTd, row);
     } else {
       labelTd.appendChild(document.createTextNode(row.label));
+      if (row.invId) labelTd.classList.add('inv-sub'); // 投資の「積立額」は見出しの下にインデント
     }
     const resetBtn = document.createElement('button');
     resetBtn.className = 'reset-btn';
