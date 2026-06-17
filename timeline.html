@@ -784,23 +784,7 @@
   </div>
 
   <div class="card">
-    <h2 class="collapsible-header" data-collapse-target="investmentSettingsBody">投資資産の設定 <span class="section-toggle">▶</span></h2>
-    <div id="investmentSettingsBody" class="collapsible-body collapsed-section">
-      <div id="investmentList"></div>
-      <button class="add-btn" id="addInvestmentBtn">+ 投資先を追加</button>
-    </div>
-  </div>
-
-  <div class="card">
-    <h2 class="collapsible-header" data-collapse-target="lifeEventSettingsBody">ライフイベントの設定 <span class="section-toggle">▶</span></h2>
-    <div id="lifeEventSettingsBody" class="collapsible-body collapsed-section">
-      <div id="lifeEventList"></div>
-      <button class="add-btn" id="addLifeEventBtn">+ イベントを追加</button>
-    </div>
-  </div>
-
-  <div class="card">
-    <h2 class="collapsible-header" data-collapse-target="insuranceSettingsBody">保険の設定 <span class="section-toggle">▶</span></h2>
+    <h2 class="collapsible-header" data-collapse-target="insuranceSettingsBody">保険の設定（受取） <span class="section-toggle">▶</span></h2>
     <div id="insuranceSettingsBody" class="collapsible-body collapsed-section">
       <div id="insuranceList"></div>
       <button class="add-btn" id="addInsuranceBtn">+ 保険を追加</button>
@@ -1639,6 +1623,7 @@ document.querySelectorAll('.collapsible-header[data-collapse-target]').forEach(h
 
 function renderInvestmentSettings() {
   const container = document.getElementById('investmentList');
+  if (!container) return; // 設定フォームは廃止(グリッドで編集)
   container.innerHTML = '';
 
   if (data.investments.length === 0) {
@@ -1705,18 +1690,22 @@ function renderInvestmentSettings() {
   });
 }
 
-document.getElementById('addInvestmentBtn').addEventListener('click', () => {
-  const n = data.investments.length + 1;
-  data.investments.push({ id: 'inv' + Date.now(), name: '投資' + n, rate: 5, initialBalance: 0 });
-  saveData();
-  ROWS = buildRows();
-  renderInvestmentSettings();
-  generateTable();
-  generateMonthlyTable();
-});
+{
+  const _aib = document.getElementById('addInvestmentBtn');
+  if (_aib) _aib.addEventListener('click', () => {
+    const n = data.investments.length + 1;
+    data.investments.push({ id: 'inv' + Date.now(), name: '投資' + n, rate: 5, initialBalance: 0 });
+    saveData();
+    ROWS = buildRows();
+    renderInvestmentSettings();
+    generateTable();
+    generateMonthlyTable();
+  });
+}
 
 function renderLifeEventSettings() {
   const container = document.getElementById('lifeEventList');
+  if (!container) return; // 設定フォームは廃止(グリッドで編集)
   container.innerHTML = '';
 
   if (data.lifeEvents.length === 0) {
@@ -1763,12 +1752,15 @@ function renderLifeEventSettings() {
   });
 }
 
-document.getElementById('addLifeEventBtn').addEventListener('click', () => {
-  data.lifeEvents.push({ id: 'ev' + Date.now(), name: 'イベント', year: data.startYear, amount: 0 });
-  saveData();
-  renderLifeEventSettings();
-  recalcAll();
-});
+{
+  const _alb = document.getElementById('addLifeEventBtn');
+  if (_alb) _alb.addEventListener('click', () => {
+    data.lifeEvents.push({ id: 'ev' + Date.now(), name: 'イベント', year: data.startYear, amount: 0 });
+    saveData();
+    renderLifeEventSettings();
+    recalcAll();
+  });
+}
 
 function renderInsuranceSettings() {
   const container = document.getElementById('insuranceList');
