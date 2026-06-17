@@ -884,8 +884,10 @@ const ASSET_ROWS = [
   { section: '資産（円）' },
   { id: 'balance',      label: '年間収支',     type: 'computed' },
   { id: 'investTotal',  label: '投資合計',     type: 'computed' },
+  { id: 'depositTotal', label: '預金合計',     type: 'computed' },
   { id: 'cashAssets',   label: '現金資産',     type: 'computed' },
   { id: 'investAssets', label: '投資資産合計', type: 'computed' },
+  { id: 'depositAssets', label: '預金資産合計', type: 'computed' },
   { id: 'totalAssets',  label: '総資産',       type: 'computed' },
 ];
 
@@ -977,11 +979,9 @@ function defaultCategoryStore() {
       { id: 'clothing',   name: '衣類・美容' },
       { id: 'hobby',      name: '趣味・娯楽' },
       { id: 'social',     name: '交際' },
-      { id: 'instax',     name: '保険・税金' },
       { id: 'selfinvest', name: '自己投資' },
       { id: 'travel',     name: '旅行・イベント' },
       { id: 'special',    name: '特別支出' },
-      { id: 'savings',    name: '貯蓄・投資' },
     ],
     categories: [
       { id: 'rent',            name: '家賃',           groupId: 'housing' },
@@ -1009,8 +1009,6 @@ function defaultCategoryStore() {
       { id: 'drinking',        name: '飲み会',         groupId: 'social' },
       { id: 'gift',            name: 'プレゼント',     groupId: 'social' },
       { id: 'ceremony',        name: '冠婚葬祭',       groupId: 'social' },
-      { id: 'insurance',       name: '保険',           groupId: 'instax' },
-      { id: 'tax',             name: '税金',           groupId: 'instax' },
       { id: 'learning',        name: '学習',           groupId: 'selfinvest' },
       { id: 'work',            name: '仕事関連',       groupId: 'selfinvest' },
       { id: 'trip',            name: '旅行',           groupId: 'travel' },
@@ -1019,7 +1017,6 @@ function defaultCategoryStore() {
       { id: 'moving',          name: '引越し',         groupId: 'special' },
       { id: 'wedding',         name: '結婚',           groupId: 'special' },
       { id: 'big_expense',     name: '大型出費',       groupId: 'special' },
-      { id: 'savings',         name: '貯金',           groupId: 'savings' },
       { id: 'living',          name: '生活費(その他)', groupId: null },
       { id: 'other_exp',       name: 'その他支出',     groupId: null },
     ],
@@ -1167,6 +1164,18 @@ function migrateData() {
       data.investments.push({ id: 'inv_default', name: '投資', rate: 5, initialBalance: 0 });
     }
     data.defaultItemsCreated = true;
+    ROWS = buildRows();
+    changed = true;
+  }
+
+  // 「保険・税金」「貯蓄・投資」の大項目は専用セクションと重複するため削除(一度だけ)。
+  if (!data.migratedRemoveDupCats) {
+    const before = JSON.stringify(categoryStore);
+    categoryStore.groups = categoryStore.groups.filter(g => g.id !== 'instax' && g.id !== 'savings');
+    categoryStore.categories = categoryStore.categories.filter(c =>
+      c.groupId !== 'instax' && c.groupId !== 'savings' && c.id !== 'savings' && c.id !== 'insurance' && c.id !== 'tax');
+    if (JSON.stringify(categoryStore) !== before) saveCategoryStore(categoryStore);
+    data.migratedRemoveDupCats = true;
     ROWS = buildRows();
     changed = true;
   }
@@ -2434,11 +2443,6 @@ function buildEditableCategoryLabel(labelTd, row) {
     nameInput.value = bank ? bank.name : row.label;
     nameInput.addEventListener('change', e => renameBankInline(row.bankId, e.target.value));
     labelTd.appendChild(nameInput);
-    const balSpan = document.createElement('span');
-    balSpan.className = 'bank-bal-label';
-    balSpan.dataset.bankBalLabel = row.bankId;
-    balSpan.textContent = '';
-    labelTd.appendChild(balSpan);
     const del = document.createElement('button');
     del.type = 'button';
     del.className = 'label-del-btn';
@@ -2803,12 +2807,6 @@ function updateInputCells(years) {
     const input = document.querySelector(`#timelineBody input[data-inv-initbal="${inv.id}"]`);
     if (input && input !== document.activeElement) input.value = formatInputYen(inv.initialBalance);
   });
-  // 口座名の右隣に「全期間の入金合計」を表示（年次グリッド）
-  (data.banks || []).forEach(bank => {
-    const sum = years.reduce((s, y) => s + getYearlyEffectiveValue(`bank_${bank.id}_dep`, y), 0);
-    const lbl = document.querySelector(`#timelineBody [data-bank-bal-label="${bank.id}"]`);
-    if (lbl) lbl.textContent = '計 ¥' + toYen(sum).toLocaleString();
-  });
   // イベントの金額セルを同期
   (data.lifeEvents || []).forEach(ev => {
     const input = document.querySelector(`#timelineBody input[data-event-amt="${ev.id}"]`);
@@ -3126,13 +3124,6 @@ function recalcMonthlyTable() {
     setMonthlyComputedCell('monthBalance', m, inc - exp);
   }
 
-  // 口座名の右隣に「その年の1〜12月の入金合計」を表示（月次グリッド）
-  (data.banks || []).forEach(bank => {
-    let sum = 0;
-    for (let m = 1; m <= 12; m++) sum += getMonthlyEffectiveValue(`bank_${bank.id}_dep`, year, m);
-    const lbl = document.querySelector(`#monthlyBody [data-bank-bal-label="${bank.id}"]`);
-    if (lbl) lbl.textContent = '計 ¥' + toYen(sum).toLocaleString();
-  });
 }
 
 // --- recalculation ---
@@ -3152,6 +3143,7 @@ function recalcAll() {
   });
 
   let prevCash = data.initialAssets;
+  let prevDeposit = 0;
   const prevBalances = {};
   data.investments.forEach(inv => { prevBalances[inv.id] = inv.initialBalance; });
 
@@ -3189,15 +3181,23 @@ function recalcAll() {
       setComputedCell(balanceId, year, newBalance);
     });
 
-    const cashAssets = prevCash + balance - investTotal;
-    const totalAssets = cashAssets + investAssetsTotal;
+    // 預金: その年の入金合計を現金から預金へ移す（総額は変わらない＝二重計上なし）
+    let depositInflow = 0;
+    (data.banks || []).forEach(b => { depositInflow += getYearlyEffectiveValue(`bank_${b.id}_dep`, year); });
+    const depositAssets = prevDeposit + depositInflow;
+    prevDeposit = depositAssets;
+
+    const cashAssets = prevCash + balance - investTotal - depositInflow;
+    const totalAssets = cashAssets + investAssetsTotal + depositAssets;
 
     setComputedCell('incomeTotal', year, incomeTotal);
     setComputedCell('expTotal', year, expTotal);
     setComputedCell('balance', year, balance);
     setComputedCell('investTotal', year, investTotal);
+    setComputedCell('depositTotal', year, depositInflow);
     setComputedCell('cashAssets', year, cashAssets);
     setComputedCell('investAssets', year, investAssetsTotal);
+    setComputedCell('depositAssets', year, depositAssets);
     setComputedCell('totalAssets', year, totalAssets);
 
     cashArr.push(cashAssets);
