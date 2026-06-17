@@ -2581,11 +2581,11 @@ function generateTable() {
       del.addEventListener('click', () => deleteEventInline(row.eventId));
       labelTd.appendChild(del);
     } else if (row.id === 'cashAssets') {
-      // 「手元現金」行: ラベルに"最初の額"の入力欄。各年の列は自動計算の残高(年末)。
+      // 「手元現金」行: ラベルに"開始時の額"の入力欄。各年の列は自動計算の残高(年末)。
       labelTd.appendChild(document.createTextNode('手元現金 '));
       const hint = document.createElement('span');
       hint.className = 'label-suffix';
-      hint.textContent = '最初→';
+      hint.textContent = '開始時';
       labelTd.appendChild(hint);
       const input = document.createElement('input');
       input.type = 'text';
@@ -2593,28 +2593,9 @@ function generateTable() {
       input.style.width = '80px';
       input.dataset.cashInitial = '1';
       input.value = formatInputYen(data.initialAssets);
-      input.title = '最初の手元現金（今ある分。なければ0）。各年の数字は自動計算される残高です。';
+      input.title = '開始時の手元現金（今ある分。なければ0）。各年の数字は自動計算される残高です。';
       attachMoneyInputFormat(input);
       input.addEventListener('input', onCashInitialInput);
-      labelTd.appendChild(input);
-    } else if (row.type === 'bankbalance') {
-      // 「残高」行: ラベルに"最初の残高"の入力欄。各年の列は自動計算(初年度から年間貯金額が反映)。
-      labelTd.classList.add('inv-sub');
-      labelTd.appendChild(document.createTextNode('残高 '));
-      const hint = document.createElement('span');
-      hint.className = 'label-suffix';
-      hint.textContent = '最初→';
-      labelTd.appendChild(hint);
-      const bank = (data.banks || []).find(b => b.id === row.bankId);
-      const input = document.createElement('input');
-      input.type = 'text';
-      input.className = 'label-edit-input';
-      input.style.width = '80px';
-      input.dataset.bankInitbal = row.bankId;
-      input.value = formatInputYen(bank ? bank.initialBalance : 0);
-      input.title = '最初の残高（今ある額）。各年の数字は自動計算される残高です。';
-      attachMoneyInputFormat(input);
-      input.addEventListener('input', onBankInitbalInput);
       labelTd.appendChild(input);
     } else {
       labelTd.textContent = row.label;
@@ -2675,10 +2656,23 @@ function generateTable() {
           td.textContent = '—';
         }
       } else if (row.type === 'bankbalance') {
-        // 残高は全年とも自動計算(初年度＝最初の残高＋初年度の年間貯金額、以降＝前年残高＋年間貯金額)。
-        td.className = 'computed-cell';
-        td.dataset.rowId = row.id;
-        td.dataset.year = year;
+        // 残高: 開始年は今ある額を手入力。2年目以降は前年残高＋年間貯金額で自動計算。
+        if (year === years[0]) {
+          const bank = (data.banks || []).find(b => b.id === row.bankId);
+          const input = document.createElement('input');
+          input.className = 'cell-input';
+          input.type = 'text';
+          input.dataset.bankInitbal = row.bankId;
+          input.value = formatInputYen(bank ? bank.initialBalance : 0);
+          input.title = '開始年に今この口座にある額。2年目以降は自動で計算されます。';
+          attachMoneyInputFormat(input);
+          input.addEventListener('input', onBankInitbalInput);
+          td.appendChild(input);
+        } else {
+          td.className = 'computed-cell';
+          td.dataset.rowId = row.id;
+          td.dataset.year = year;
+        }
       } else {
         const input = document.createElement('input');
         input.className = row.type === 'text' ? 'cell-input event-input' : 'cell-input';
@@ -3300,13 +3294,17 @@ function recalcAll() {
     let depositInflow = 0;
     let depositAssets = 0;
     (data.banks || []).forEach(b => {
-      const dep = getYearlyEffectiveValue(`bank_${b.id}_dep`, year);
-      // 残高 = 前年残高(初年度は最初の残高) ＋ その年の年間貯金額。貯金分は現金から預金へ移す。
-      const bal = prevBankBal[b.id] + dep;
-      depositInflow += dep;
+      let bal;
+      if (yearIdx === 0) {
+        bal = b.initialBalance || 0; // 開始年は今ある額(手入力)。貯金は翌年から反映。
+      } else {
+        const dep = getYearlyEffectiveValue(`bank_${b.id}_dep`, year);
+        bal = prevBankBal[b.id] + dep;
+        depositInflow += dep; // その年に現金から預金へ移した額
+        setComputedCell(`bank_${b.id}_bal`, year, bal); // 残高セル(2年目以降)を表示
+      }
       prevBankBal[b.id] = bal;
       depositAssets += bal;
-      setComputedCell(`bank_${b.id}_bal`, year, bal);
     });
 
     const cashAssets = prevCash + balance - investTotal - depositInflow;
