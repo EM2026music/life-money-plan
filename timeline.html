@@ -869,7 +869,7 @@ const ASSET_ROWS = [
   { id: 'balance',      label: '年間収支',       type: 'computed' },
   { id: 'cashAssets',   label: '現金資産',       type: 'computed' },
   { id: 'investAssets', label: '投資資産（残高）', type: 'computed' },
-  { id: 'depositAssets', label: '預金（残高）',   type: 'computed' },
+  { id: 'depositAssets', label: '銀行預金（残高）', type: 'computed' },
   { id: 'totalAssets',  label: '総資産',         type: 'computed' },
 ];
 
@@ -1255,15 +1255,15 @@ function buildInsuranceRows() {
 // 預金(銀行口座ごと)の行を生成。株(投資)と同じ形: 見出し + 初期残高 + 入金額。
 // 初期残高=今ある額(現金から引かない)、入金額=将来の貯金(現金から預金へ移す)。残高は資産セクションで合計表示。
 function buildBankRows() {
-  const rows = [{ section: '預金（円）', sectionType: 'bank' }];
+  const rows = [{ section: '銀行預金（円）', sectionType: 'bank' }];
   if (!data.banks || !data.banks.length) {
     rows.push({ id: '_bank_empty', label: '（口座なし　右上の ＋ ボタンで追加）', type: 'note' });
     return rows;
   }
   data.banks.forEach(b => {
     rows.push({ id: `bank_${b.id}_head`, label: b.name, type: 'bankhead', bankId: b.id });
-    rows.push({ id: `bank_${b.id}_initbal`, label: '初期残高', type: 'bankinitbal', bankId: b.id });
-    rows.push({ id: `bank_${b.id}_dep`, label: '入金額', type: 'editable', default: 0, forwardFill: 'none', bankId: b.id });
+    rows.push({ id: `bank_${b.id}_initbal`, label: '今ある残高', type: 'bankinitbal', bankId: b.id });
+    rows.push({ id: `bank_${b.id}_dep`, label: '毎年の貯金', type: 'editable', default: 0, forwardFill: 'none', bankId: b.id });
   });
   return rows;
 }
@@ -2110,7 +2110,7 @@ function handleSectionAdd(type) {
   const sectionNameMap = {
     family: '年齢', income: '収入（円/年）', expenseGroup: '支出（円/年）',
     insurance: '保険（円/年）', investment: '投資資産（円/年）', event: 'ライフイベント',
-    bank: '預金（円・現在の残高）'
+    bank: '銀行預金（円）'
   };
   const secName = sectionNameMap[type];
   if (secName) collapsedSections.delete(secName);
@@ -2582,7 +2582,7 @@ function generateTable() {
       labelTd.appendChild(del);
     } else if (row.id === 'cashAssets') {
       // 「現金」行: ラベルに今ある手元現金の入力欄を付ける（各年セルは年末残高を表示）
-      labelTd.appendChild(document.createTextNode('現金 '));
+      labelTd.appendChild(document.createTextNode('手元現金 '));
       const input = document.createElement('input');
       input.type = 'text';
       input.className = 'label-edit-input';
@@ -2756,6 +2756,10 @@ function onCellInput(e) {
   const rowId = e.target.dataset.rowId;
   const year = parseInt(e.target.dataset.year);
   const row = ROWS.find(r => r.id === rowId);
+  // 銀行預金の「毎年の貯金」と投資の「積立額」は手元現金から移すお金。
+  // これらの入力で手元現金がマイナスになるなら、入力前の値に戻して入金をブロックする。
+  const isMoveFromCash = (row.bankId && rowId.endsWith('_dep')) || (row.invId && rowId.endsWith('_contrib'));
+  const prevValue = isMoveFromCash ? getCellValue(rowId, year) : null;
   const value = row.type === 'text' ? e.target.value : row.isRate ? (parseFloat(e.target.value) || 0) : parseYenInput(e.target.value);
   setCellValue(rowId, year, value);
   // 継続(forwardFill:'full')の行だけ、編集年より後ろをクリアして「以降ずっとこの値」にする。
@@ -2763,6 +2767,18 @@ function onCellInput(e) {
   if (row.forwardFill === 'full') clearCellsAfter(rowId, year);
   saveData();
   recalcAll();
+  if (isMoveFromCash) {
+    const cell = document.querySelector(`#timelineBody td.computed-cell[data-row-id="cashAssets"][data-year="${year}"]`);
+    if (cell && cell.classList.contains('negative')) {
+      // 手元現金が足りない → 入力を元に戻す
+      setCellValue(rowId, year, prevValue);
+      if (row.forwardFill === 'full') clearCellsAfter(rowId, year);
+      saveData();
+      recalcAll();
+      e.target.value = formatInputYen(prevValue);
+      alert('⚠ 手元現金が足りません。\n収入を増やすか、預金・投資への入れすぎを減らしてください。');
+    }
+  }
 }
 
 // 投資の「初期保有額」セル(開始年)の入力。inv.initialBalance(万円)に保存し、設定パネルとも同期。
@@ -3303,7 +3319,7 @@ function updateChart(years, cashArr, investArr, totalArr, depositArr) {
   }, opts || {});
   const datasets = [
     mk('現金資産', cashYen, '#38b6d3'),
-    mk('預金', depositYen, '#f5a623'),
+    mk('銀行預金', depositYen, '#f5a623'),
     mk('投資資産合計', investYen, '#4caf7d'),
     mk('総資産', totalYen, '#2c6b7a', { borderDash: [6, 4], fill: false, borderWidth: 2 }),
   ];
