@@ -387,10 +387,8 @@
       <label>シミュレーション年数
         <input type="number" id="numYears">
       </label>
-      <label>現在の現金資産（円）<span class="ia-note">※今ある現金・預金の合計</span>
-        <input type="text" inputmode="numeric" id="initialAssets">
-      </label>
     </div>
+    <p class="note" style="margin-top:0;">※現金・預金・投資は「年次タイムライン」で入力します（合計が下の総資産になります）。</p>
     <div class="family-section">
       <div class="family-head">家族構成 <span class="family-hint">(最大10人・年齢/学年の計算に使います)</span></div>
       <div id="familyList"></div>
@@ -471,11 +469,6 @@ function parseYenInput(str) { return fromYen(parseFloat(String(str).replace(/[^0
 function initBasicInfo() {
   document.getElementById('startYear').value = data.startYear;
   document.getElementById('numYears').value = data.numYears;
-  const ia = document.getElementById('initialAssets');
-  ia.value = formatInputYen(data.initialAssets);
-  ia.addEventListener('focus', () => { ia.value = ia.value.replace(/[,，\s]/g, ''); ia.select(); });
-  ia.addEventListener('blur', () => { ia.value = formatInputYen(parseYenInput(ia.value)); });
-  ia.addEventListener('input', e => { data.initialAssets = parseYenInput(e.target.value); saveData(); renderHero(); });
 
   document.getElementById('startYear').addEventListener('change', e => {
     data.startYear = parseInt(e.target.value) || 2026; saveData();
@@ -525,10 +518,11 @@ document.getElementById('addFamilyBtn').addEventListener('click', () => {
 // 現在の総資産(現金＋投資の初期残高)を大きく表示。将来予測は年次タイムラインの計算結果(あれば)から。
 function renderHero() {
   const cash = toYen(data.initialAssets || 0);
+  const deposit = (data.banks || []).reduce((s, b) => s + toYen(b.initialBalance || 0), 0);
   const invest = (data.investments || []).reduce((s, inv) => s + toYen(inv.initialBalance || 0), 0);
-  const total = cash + invest;
+  const total = cash + deposit + invest;
   document.getElementById('heroTotal').textContent = '¥' + total.toLocaleString();
-  document.getElementById('heroSub').textContent = `現金 ¥${cash.toLocaleString()} ・ 投資 ¥${invest.toLocaleString()}`;
+  document.getElementById('heroSub').textContent = `現金 ¥${cash.toLocaleString()} ・ 預金 ¥${deposit.toLocaleString()} ・ 投資 ¥${invest.toLocaleString()}`;
   const futureEl = document.getElementById('heroFuture');
   try {
     const proj = JSON.parse(localStorage.getItem('lifeMoneyProjectionV1') || 'null');

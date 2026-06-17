@@ -901,7 +901,7 @@ function defaultData() {
     startYear: 2026,
     numYears: 35,
     initialAssets: 0,
-    banks: [{ id: 'bank_default', name: '銀行' }],
+    banks: [{ id: 'bank_default', name: '銀行', initialBalance: 0 }],
     births: { birthDad: null, birthMom: null, birthChild1: null, birthChild2: null },
     family: [
       { id: 'dad', name: 'パパ', type: 'adult', birth: null },
@@ -1178,10 +1178,17 @@ function migrateData() {
     changed = true;
   }
 
-  // 預金(銀行ごと)。未設定なら、旧「現在の資産」を1口座に移行して作成。
+  // 預金(銀行ごと)。未設定なら、旧「現在の資産」を1口座の初期残高に移行して作成。
   if (!data.banks) {
-    data.banks = [{ id: 'bank_default', name: '銀行' }];
+    data.banks = [{ id: 'bank_default', name: '銀行', initialBalance: data.initialAssets || 0 }];
+    if (data.initialAssets) data.initialAssets = 0; // 現金は手元現金のみに(預金へ移行)
     ROWS = buildRows();
+    changed = true;
+  }
+  // 既存の口座に初期残高フィールドが無ければ追加
+  if (data.banks && !data.migratedBankInitbal) {
+    data.banks.forEach(b => { if (b.initialBalance === undefined) b.initialBalance = 0; });
+    data.migratedBankInitbal = true;
     changed = true;
   }
 
@@ -1261,16 +1268,18 @@ function buildInsuranceRows() {
   return rows;
 }
 
-// 預金(銀行口座ごとの現在残高)の行を生成。各口座は開始年セルに残高を入力する（投資の初期保有額と同じ考え方）。
+// 預金(銀行口座ごと)の行を生成。株(投資)と同じ形: 見出し + 初期残高 + 入金額。
+// 初期残高=今ある額(現金から引かない)、入金額=将来の貯金(現金から預金へ移す)。残高は資産セクションで合計表示。
 function buildBankRows() {
-  const rows = [{ section: '預金（円・口座への入金）', sectionType: 'bank' }];
+  const rows = [{ section: '預金（円）', sectionType: 'bank' }];
   if (!data.banks || !data.banks.length) {
     rows.push({ id: '_bank_empty', label: '（口座なし　右上の ＋ ボタンで追加）', type: 'note' });
     return rows;
   }
-  // 各口座は editable(forwardFill:'none')。年次⇔月次の入力・連動は既存の仕組みで動く。
   data.banks.forEach(b => {
-    rows.push({ id: `bank_${b.id}_dep`, label: b.name, type: 'editable', default: 0, forwardFill: 'none', bankId: b.id });
+    rows.push({ id: `bank_${b.id}_head`, label: b.name, type: 'bankhead', bankId: b.id });
+    rows.push({ id: `bank_${b.id}_initbal`, label: '初期残高', type: 'bankinitbal', bankId: b.id });
+    rows.push({ id: `bank_${b.id}_dep`, label: '入金額', type: 'editable', default: 0, forwardFill: 'none', bankId: b.id });
   });
   return rows;
 }
@@ -2432,8 +2441,8 @@ function buildEditableCategoryLabel(labelTd, row) {
     return;
   }
 
-  // 預金の口座行: 名前編集・削除 + 口座名の右隣に合計(全年の入金合計)を表示
-  if (row.bankId) {
+  // 預金の見出し行: 口座名の編集・削除（配下に初期残高・入金額が並ぶ）
+  if (row.type === 'bankhead') {
     const bank = (data.banks || []).find(x => x.id === row.bankId);
     const nameInput = document.createElement('input');
     nameInput.type = 'text';
@@ -2520,11 +2529,11 @@ function generateTable() {
       if (collapsedSections.has(currentSection)) tr.classList.add('sec-hidden');
     }
     if (row.type === 'computed') tr.className += ' computed-row';
-    if (row.type === 'invhead') tr.className += ' invhead-row';
+    if (row.type === 'invhead' || row.type === 'bankhead') tr.className += ' invhead-row';
 
     const labelTd = document.createElement('td');
     labelTd.className = 'row-label';
-    if (row.id.startsWith('catgrp_') || row.catId !== undefined || row.incItem || row.insId || row.type === 'invhead' || row.bankId) {
+    if (row.id.startsWith('catgrp_') || row.catId !== undefined || row.incItem || row.insId || row.type === 'invhead' || row.type === 'bankhead') {
       buildEditableCategoryLabel(labelTd, row);
     } else if (row.type === 'age' && row.familyId) {
       // 名前(改名可)+ 生まれ年の直接入力 + 削除(基本情報を開かなくてもここで変更できる)
@@ -2579,9 +2588,22 @@ function generateTable() {
       del.textContent = '✕';
       del.addEventListener('click', () => deleteEventInline(row.eventId));
       labelTd.appendChild(del);
+    } else if (row.id === 'cashAssets') {
+      // 「現金」行: ラベルに今ある手元現金の入力欄を付ける（各年セルは年末残高を表示）
+      labelTd.appendChild(document.createTextNode('現金 '));
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'label-edit-input';
+      input.style.width = '80px';
+      input.dataset.cashInitial = '1';
+      input.value = formatInputYen(data.initialAssets);
+      input.title = '今ある手元現金（銀行に預けてない分。なければ0）';
+      attachMoneyInputFormat(input);
+      input.addEventListener('input', onCashInitialInput);
+      labelTd.appendChild(input);
     } else {
       labelTd.textContent = row.label;
-      if (row.invId && row.type !== 'invhead') labelTd.classList.add('inv-sub');
+      if ((row.invId && row.type !== 'invhead') || (row.bankId && row.type !== 'bankhead')) labelTd.classList.add('inv-sub');
     }
     if (row.catId !== undefined && row.groupId) {
       tr.dataset.parentGroup = row.groupId;
@@ -2591,7 +2613,7 @@ function generateTable() {
 
     years.forEach(year => {
       const td = document.createElement('td');
-      if (row.type === 'invhead') {
+      if (row.type === 'invhead' || row.type === 'bankhead') {
         // 見出し行は値セルなし(名前と削除ボタンのみ)
       } else if (row.type === 'age') {
         td.className = 'age-cell';
@@ -2631,6 +2653,24 @@ function generateTable() {
           input.title = '今すでに持っている額（開始時点の残高）';
           attachMoneyInputFormat(input);
           input.addEventListener('input', onInitBalInput);
+          td.appendChild(input);
+        } else {
+          td.style.color = 'var(--text-light)';
+          td.style.textAlign = 'center';
+          td.textContent = '—';
+        }
+      } else if (row.type === 'bankinitbal') {
+        // 預金の初期残高(今ある額)は開始年の1セルだけ入力可。他の年は「—」。
+        if (year === years[0]) {
+          const bank = (data.banks || []).find(b => b.id === row.bankId);
+          const input = document.createElement('input');
+          input.className = 'cell-input';
+          input.type = 'text';
+          input.dataset.bankInitbal = row.bankId;
+          input.value = formatInputYen(bank ? bank.initialBalance : 0);
+          input.title = '今この口座にある残高';
+          attachMoneyInputFormat(input);
+          input.addEventListener('input', onBankInitbalInput);
           td.appendChild(input);
         } else {
           td.style.color = 'var(--text-light)';
@@ -2745,15 +2785,32 @@ function onInitBalInput(e) {
   recalcAll();
 }
 
+// 「現金」行ラベルの手元現金入力。data.initialAssets(万円)に保存。
+function onCashInitialInput(e) {
+  data.initialAssets = parseYenInput(e.target.value);
+  saveData();
+  recalcAll();
+}
+
+// 預金の「初期残高」セル(開始年)の入力。bank.initialBalance(万円)に保存。
+function onBankInitbalInput(e) {
+  const bankId = e.target.dataset.bankInitbal;
+  const bank = (data.banks || []).find(b => b.id === bankId);
+  if (!bank) return;
+  bank.initialBalance = parseYenInput(e.target.value);
+  saveData();
+  recalcAll();
+}
+
 function addBankInline() {
   if (!data.banks) data.banks = [];
   const id = 'bank' + Date.now();
-  data.banks.push({ id, name: '口座' + (data.banks.length + 1) });
+  data.banks.push({ id, name: '口座' + (data.banks.length + 1), initialBalance: 0 });
   saveData();
   ROWS = buildRows();
   generateTable();
   generateMonthlyTable();
-  scrollToNewRow('bank_' + id + '_dep');
+  scrollToNewRow('bank_' + id + '_head');
 }
 
 function deleteBankInline(id) {
@@ -2805,6 +2862,14 @@ function updateInputCells(years) {
     const input = document.querySelector(`#timelineBody input[data-inv-initbal="${inv.id}"]`);
     if (input && input !== document.activeElement) input.value = formatInputYen(inv.initialBalance);
   });
+  // 預金の「初期残高」セルを bank.initialBalance と同期
+  (data.banks || []).forEach(bank => {
+    const input = document.querySelector(`#timelineBody input[data-bank-initbal="${bank.id}"]`);
+    if (input && input !== document.activeElement) input.value = formatInputYen(bank.initialBalance);
+  });
+  // 「現金」行ラベルの手元現金入力を同期
+  const cashIn = document.querySelector('#timelineBody input[data-cash-initial]');
+  if (cashIn && cashIn !== document.activeElement) cashIn.value = formatInputYen(data.initialAssets);
   // イベントの金額セルを同期
   (data.lifeEvents || []).forEach(ev => {
     const input = document.querySelector(`#timelineBody input[data-event-amt="${ev.id}"]`);
@@ -3141,7 +3206,8 @@ function recalcAll() {
   });
 
   let prevCash = data.initialAssets;
-  let prevDeposit = 0;
+  // 預金の初期残高(今ある額)は既存資産。現金から引かず、預金残高のスタートにする。
+  let prevDeposit = (data.banks || []).reduce((s, b) => s + (b.initialBalance || 0), 0);
   const prevBalances = {};
   data.investments.forEach(inv => { prevBalances[inv.id] = inv.initialBalance; });
 
