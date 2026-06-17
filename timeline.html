@@ -1252,8 +1252,8 @@ function buildInsuranceRows() {
   return rows;
 }
 
-// 預金(銀行口座ごと)の行を生成。株(投資)と同じ形: 見出し + 初期残高 + 入金額。
-// 初期残高=今ある額(現金から引かない)、入金額=将来の貯金(現金から預金へ移す)。残高は資産セクションで合計表示。
+// 預金(銀行口座ごと)の行を生成。見出し + 年間貯金額 + 残高。
+// 残高=初年度は手入力(今ある額)、2年目以降は「前年残高＋年間貯金額」で自動。年間貯金額は毎年継続(現金から預金へ移す)。
 function buildBankRows() {
   const rows = [{ section: '銀行預金（円）', sectionType: 'bank' }];
   if (!data.banks || !data.banks.length) {
@@ -1262,8 +1262,8 @@ function buildBankRows() {
   }
   data.banks.forEach(b => {
     rows.push({ id: `bank_${b.id}_head`, label: b.name, type: 'bankhead', bankId: b.id });
-    rows.push({ id: `bank_${b.id}_initbal`, label: '今ある残高', type: 'bankinitbal', bankId: b.id });
-    rows.push({ id: `bank_${b.id}_dep`, label: '年間貯金額', type: 'editable', default: 0, forwardFill: 'none', bankId: b.id });
+    rows.push({ id: `bank_${b.id}_dep`, label: '年間貯金額', type: 'editable', default: 0, forwardFill: 'full', bankId: b.id });
+    rows.push({ id: `bank_${b.id}_bal`, label: '残高', type: 'bankbalance', bankId: b.id });
   });
   return rows;
 }
@@ -2520,7 +2520,7 @@ function generateTable() {
       tr.dataset.section = currentSection;
       if (collapsedSections.has(currentSection)) tr.classList.add('sec-hidden');
     }
-    if (row.type === 'computed') tr.className += ' computed-row';
+    if (row.type === 'computed' || row.type === 'bankbalance') tr.className += ' computed-row';
     if (row.type === 'invhead' || row.type === 'bankhead') tr.className += ' invhead-row';
 
     const labelTd = document.createElement('td');
@@ -2655,8 +2655,8 @@ function generateTable() {
           td.style.textAlign = 'center';
           td.textContent = '—';
         }
-      } else if (row.type === 'bankinitbal') {
-        // 預金の初期残高(今ある額)は開始年の1セルだけ入力可。他の年は「—」。
+      } else if (row.type === 'bankbalance') {
+        // 残高: 初年度は手入力(今ある額)。2年目以降は前年残高＋年間貯金額で自動計算(computed)。
         if (year === years[0]) {
           const bank = (data.banks || []).find(b => b.id === row.bankId);
           const input = document.createElement('input');
@@ -2664,14 +2664,14 @@ function generateTable() {
           input.type = 'text';
           input.dataset.bankInitbal = row.bankId;
           input.value = formatInputYen(bank ? bank.initialBalance : 0);
-          input.title = '今この口座にある残高';
+          input.title = '今この口座にある残高（最初の年）。2年目以降は自動で計算されます。';
           attachMoneyInputFormat(input);
           input.addEventListener('input', onBankInitbalInput);
           td.appendChild(input);
         } else {
-          td.style.color = 'var(--text-light)';
-          td.style.textAlign = 'center';
-          td.textContent = '—';
+          td.className = 'computed-cell';
+          td.dataset.rowId = row.id;
+          td.dataset.year = year;
         }
       } else {
         const input = document.createElement('input');
@@ -3218,15 +3218,16 @@ function recalcAll() {
   });
 
   let prevCash = data.initialAssets;
-  // 預金の初期残高(今ある額)は既存資産。現金から引かず、預金残高のスタートにする。
-  let prevDeposit = (data.banks || []).reduce((s, b) => s + (b.initialBalance || 0), 0);
+  // 各口座の残高を年ごとに追跡。初年度は手入力(今ある額)、2年目以降は前年残高＋年間貯金額。
+  const prevBankBal = {};
+  (data.banks || []).forEach(b => { prevBankBal[b.id] = b.initialBalance || 0; });
   const prevBalances = {};
   data.investments.forEach(inv => { prevBalances[inv.id] = inv.initialBalance; });
 
   const cashArr = [], investArr = [], totalArr = [], depositArr = [];
   let firstYearStats = null;
 
-  years.forEach(year => {
+  years.forEach((year, yearIdx) => {
     // 年金・保険受取は収入項目(直接入力)になったので incomeItemIds() に含まれる。
     const incomeTotal = incomeItemIds().reduce((s, id) => s + getYearlyEffectiveValue(id, year), 0);
     const eventCost = lifeEventCost(year);
@@ -3257,11 +3258,23 @@ function recalcAll() {
       setComputedCell(balanceId, year, newBalance);
     });
 
-    // 預金: その年の入金合計を現金から預金へ移す（総額は変わらない＝二重計上なし）
+    // 預金: 各口座の残高 = 初年度は手入力(既存資産、現金から引かない)、
+    //        2年目以降は前年残高＋年間貯金額(その年の貯金分だけ現金から預金へ移す)。
     let depositInflow = 0;
-    (data.banks || []).forEach(b => { depositInflow += getYearlyEffectiveValue(`bank_${b.id}_dep`, year); });
-    const depositAssets = prevDeposit + depositInflow;
-    prevDeposit = depositAssets;
+    let depositAssets = 0;
+    (data.banks || []).forEach(b => {
+      let bal;
+      if (yearIdx === 0) {
+        bal = b.initialBalance || 0; // 初年度は手入力残高(貯金は翌年から反映)
+      } else {
+        const dep = getYearlyEffectiveValue(`bank_${b.id}_dep`, year);
+        bal = prevBankBal[b.id] + dep;
+        depositInflow += dep; // その年に現金から預金へ移した額
+        setComputedCell(`bank_${b.id}_bal`, year, bal); // 残高セル(2年目以降)を表示
+      }
+      prevBankBal[b.id] = bal;
+      depositAssets += bal;
+    });
 
     const cashAssets = prevCash + balance - investTotal - depositInflow;
     const totalAssets = cashAssets + investAssetsTotal + depositAssets;
