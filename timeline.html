@@ -678,15 +678,21 @@
     font-size: 13px;
     margin: 10px 0 0;
   }
+  .auth-desc { font-size: 13px; color: var(--text-light); margin: 0 0 14px; line-height: 1.6; }
+  .auth-reset { margin: 14px 0 0; font-size: 12px; }
+  .auth-reset a { color: var(--text-light); }
 </style>
 </head>
 <body>
 <div id="authGate" class="auth-gate">
   <div class="auth-box">
-    <h2>合言葉を入力してください</h2>
+    <h2 id="authTitle">合言葉を入力してください</h2>
+    <p id="authDesc" class="auth-desc" style="display:none;">この端末で使うパスワードを決めてください。次回からこのパスワードで開きます。</p>
     <input type="password" id="authPassword" placeholder="パスワード" autocomplete="off">
+    <input type="password" id="authPassword2" placeholder="パスワード（確認）" autocomplete="off" style="display:none;">
     <button type="button" id="authSubmit">開く</button>
-    <p id="authError" class="auth-error" style="display:none;">合言葉が違います</p>
+    <p id="authError" class="auth-error" style="display:none;"></p>
+    <p id="authReset" class="auth-reset" style="display:none;"><a href="reset.html">パスワードを忘れた場合（データを消して最初から）</a></p>
   </div>
 </div>
 <div class="page" style="display:none">
@@ -2140,10 +2146,25 @@ function addLifeEventInline() {
     const years = getYears();
     return years.find(y => !used.has(y)) || years[years.length - 1];
   })();
-  data.lifeEvents.push({ id: 'ev' + Date.now(), name: 'イベント', year: nextYear, amount: 0 });
+  data.lifeEvents.push({ id: 'ev' + Date.now() + Math.floor(Math.random() * 10000), name: 'イベント', year: nextYear, amount: 0 });
   saveData();
   renderLifeEventSettings();
   recalcAll();
+  // ＋を押したら「ライフイベントの設定」を開いて、追加した行にスクロール＆名前入力にフォーカス
+  // (イベントは表では1行に各年の名称が並ぶ設計なので、入力は下の設定フォームで行う)
+  const body = document.getElementById('lifeEventSettingsBody');
+  if (body) body.classList.remove('collapsed-section');
+  const toggle = document.querySelector('[data-collapse-target="lifeEventSettingsBody"] .section-toggle');
+  if (toggle) toggle.textContent = '▼';
+  requestAnimationFrame(() => {
+    const rows = document.querySelectorAll('#lifeEventList .investment-row');
+    const last = rows[rows.length - 1];
+    if (last) {
+      last.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const nameInput = last.querySelector('.inv-name');
+      if (nameInput) { nameInput.focus(); nameInput.select(); }
+    }
+  });
 }
 
 function onEventAmountChange(year, raw) {
@@ -3264,11 +3285,16 @@ window.addEventListener('storage', e => {
 // 簡易パスワードゲート(正規の合言葉をハッシュ化して比較。一致した端末ではlocalStorageに記録し再入力を省略)
 (function() {
   const AUTH_KEY = 'lifeMoneyAuthV1';
-  const AUTH_HASH = '092a674450f5c571cb12b93efb0647da3c8b1b84e93a76cef3130464b4635f7a';
+  const HASH_KEY = 'lifeMoneyAuthHashV1';
   const gate = document.getElementById('authGate');
   const wrapper = document.querySelector('.page');
   const input = document.getElementById('authPassword');
+  const input2 = document.getElementById('authPassword2');
   const error = document.getElementById('authError');
+  const title = document.getElementById('authTitle');
+  const desc = document.getElementById('authDesc');
+  const resetLink = document.getElementById('authReset');
+  const submit = document.getElementById('authSubmit');
 
   function unlock() {
     gate.style.display = 'none';
@@ -3280,28 +3306,53 @@ window.addEventListener('storage', e => {
     }
   }
 
-  async function tryUnlock() {
-    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input.value));
-    const hex = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
-    if (hex === AUTH_HASH) {
+  async function sha256(s) {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  if (localStorage.getItem(AUTH_KEY) === 'ok') { unlock(); return; }
+
+  const savedHash = localStorage.getItem(HASH_KEY);
+  const setupMode = !savedHash;
+  if (setupMode) {
+    title.textContent = 'パスワードを決めてください';
+    desc.style.display = 'block';
+    input.placeholder = '新しいパスワード';
+    input2.style.display = 'block';
+    submit.textContent = '設定して開く';
+  } else {
+    resetLink.style.display = 'block';
+  }
+
+  async function handle() {
+    const v = input.value;
+    if (!v) { error.textContent = 'パスワードを入力してください'; error.style.display = 'block'; return; }
+    if (setupMode) {
+      if (v.length < 4) { error.textContent = '4文字以上にしてください'; error.style.display = 'block'; return; }
+      if (v !== input2.value) { error.textContent = '確認用と一致しません'; error.style.display = 'block'; input2.focus(); return; }
+      localStorage.setItem(HASH_KEY, await sha256(v));
       localStorage.setItem(AUTH_KEY, 'ok');
       error.style.display = 'none';
       unlock();
     } else {
-      error.style.display = 'block';
-      input.value = '';
-      input.focus();
+      if (await sha256(v) === savedHash) {
+        localStorage.setItem(AUTH_KEY, 'ok');
+        error.style.display = 'none';
+        unlock();
+      } else {
+        error.textContent = 'パスワードが違います';
+        error.style.display = 'block';
+        input.value = '';
+        input.focus();
+      }
     }
   }
 
-  if (localStorage.getItem(AUTH_KEY) === 'ok') {
-    unlock();
-  } else {
-    input.focus();
-  }
-
-  document.getElementById('authSubmit').addEventListener('click', tryUnlock);
-  input.addEventListener('keydown', e => { if (e.key === 'Enter') tryUnlock(); });
+  submit.addEventListener('click', handle);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') { if (setupMode) input2.focus(); else handle(); } });
+  input2.addEventListener('keydown', e => { if (e.key === 'Enter') handle(); });
+  input.focus();
 })();
 </script>
 </body>

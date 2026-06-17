@@ -26,9 +26,7 @@
 <script>
 document.getElementById('resetBtn').addEventListener('click', function() {
   if (!confirm('本当に全データを消去しますか？\nやり直しはできません。')) return;
-  const auth = localStorage.getItem('lifeMoneyAuthV1');
   localStorage.clear();
-  if (auth) localStorage.setItem('lifeMoneyAuthV1', auth);
   document.getElementById('done').style.display = 'block';
   document.getElementById('resetBtn').style.display = 'none';
   setTimeout(function() { location.href = 'top.html'; }, 1500);
