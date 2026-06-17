@@ -2597,6 +2597,25 @@ function generateTable() {
       attachMoneyInputFormat(input);
       input.addEventListener('input', onCashInitialInput);
       labelTd.appendChild(input);
+    } else if (row.type === 'bankbalance') {
+      // 「残高」行: ラベルに"最初の残高"の入力欄。各年の列は自動計算(初年度から年間貯金額が反映)。
+      labelTd.classList.add('inv-sub');
+      labelTd.appendChild(document.createTextNode('残高 '));
+      const hint = document.createElement('span');
+      hint.className = 'label-suffix';
+      hint.textContent = '最初→';
+      labelTd.appendChild(hint);
+      const bank = (data.banks || []).find(b => b.id === row.bankId);
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'label-edit-input';
+      input.style.width = '80px';
+      input.dataset.bankInitbal = row.bankId;
+      input.value = formatInputYen(bank ? bank.initialBalance : 0);
+      input.title = '最初の残高（今ある額）。各年の数字は自動計算される残高です。';
+      attachMoneyInputFormat(input);
+      input.addEventListener('input', onBankInitbalInput);
+      labelTd.appendChild(input);
     } else {
       labelTd.textContent = row.label;
       if ((row.invId && row.type !== 'invhead') || (row.bankId && row.type !== 'bankhead')) labelTd.classList.add('inv-sub');
@@ -2656,23 +2675,10 @@ function generateTable() {
           td.textContent = '—';
         }
       } else if (row.type === 'bankbalance') {
-        // 残高: 初年度は手入力(今ある額)。2年目以降は前年残高＋年間貯金額で自動計算(computed)。
-        if (year === years[0]) {
-          const bank = (data.banks || []).find(b => b.id === row.bankId);
-          const input = document.createElement('input');
-          input.className = 'cell-input';
-          input.type = 'text';
-          input.dataset.bankInitbal = row.bankId;
-          input.value = formatInputYen(bank ? bank.initialBalance : 0);
-          input.title = '今この口座にある残高（最初の年）。2年目以降は自動で計算されます。';
-          attachMoneyInputFormat(input);
-          input.addEventListener('input', onBankInitbalInput);
-          td.appendChild(input);
-        } else {
-          td.className = 'computed-cell';
-          td.dataset.rowId = row.id;
-          td.dataset.year = year;
-        }
+        // 残高は全年とも自動計算(初年度＝最初の残高＋初年度の年間貯金額、以降＝前年残高＋年間貯金額)。
+        td.className = 'computed-cell';
+        td.dataset.rowId = row.id;
+        td.dataset.year = year;
       } else {
         const input = document.createElement('input');
         input.className = row.type === 'text' ? 'cell-input event-input' : 'cell-input';
@@ -2937,7 +2943,7 @@ function generateMonthlyTable() {
   let pendingSection = null;
   ROWS.forEach(row => {
     if (row.section) { pendingSection = row; return; }
-    const isMonthly = (row.type === 'editable' && row.forwardFill !== undefined && !row.isRate) || (row.id && row.id.startsWith('catgrp_')) || row.type === 'invhead';
+    const isMonthly = (row.type === 'editable' && row.forwardFill !== undefined && !row.isRate) || (row.id && row.id.startsWith('catgrp_')) || row.type === 'invhead' || row.type === 'bankhead';
     if (!isMonthly) return;
     if (pendingSection) {
       const name = pendingSection.section.replace(/（.*?）/, '');
@@ -2966,7 +2972,7 @@ function generateMonthlyTable() {
     const tr = document.createElement('tr');
     tr.dataset.rowId = row.id;
 
-    if (row.type === 'invhead') {
+    if (row.type === 'invhead' || row.type === 'bankhead') {
       tr.className = 'invhead-row';
       const labelTd = document.createElement('td');
       labelTd.className = 'row-label';
@@ -3012,12 +3018,12 @@ function generateMonthlyTable() {
 
     const labelTd = document.createElement('td');
     labelTd.className = 'row-label';
-    if (row.catId !== undefined || row.grpDirect || row.incItem || row.insId || row.bankId) {
-      // 分類・直接入力大項目・収入項目・保険・預金口座: 名前をその場で編集・削除できる + リセット
+    if (row.catId !== undefined || row.grpDirect || row.incItem || row.insId) {
+      // 分類・直接入力大項目・収入項目・保険: 名前をその場で編集・削除できる + リセット
       buildEditableCategoryLabel(labelTd, row);
     } else {
       labelTd.appendChild(document.createTextNode(row.label));
-      if (row.invId) labelTd.classList.add('inv-sub'); // 投資の「積立額」は見出しの下にインデント
+      if (row.invId || row.bankId) labelTd.classList.add('inv-sub'); // 投資の「積立額」・預金の「年間貯金額」は見出しの下にインデント
     }
     const resetBtn = document.createElement('button');
     resetBtn.className = 'reset-btn';
@@ -3098,20 +3104,44 @@ function generateMonthlyTable() {
   recalcMonthlyTable();
 }
 
+// 預金の年間貯金額・投資の積立額か(手元現金から移すお金)。
+function isMoveFromCashRow(rowId) {
+  const row = ROWS.find(r => r.id === rowId);
+  return !!row && ((row.bankId && rowId.endsWith('_dep')) || (row.invId && rowId.endsWith('_contrib')));
+}
+// その年の手元現金がマイナスかどうか(年次グリッドの現金資産セルで判定)。
+function cashNegativeAt(year) {
+  const cell = document.querySelector(`#timelineBody td.computed-cell[data-row-id="cashAssets"][data-year="${year}"]`);
+  return !!(cell && cell.classList.contains('negative'));
+}
+
 function onBaseCellInput(e) {
   const rowId = e.target.dataset.rowId;
   const year = data.monthlySelectedYear;
+  const block = isMoveFromCashRow(rowId);
+  const prevCells = block ? JSON.parse(JSON.stringify(data.cells[rowId] || {})) : null;
+  const prevMonthly = block ? JSON.parse(JSON.stringify(data.monthlyCells[rowId] || {})) : null;
   const monthly = parseYenInput(e.target.value);
   // 基準額は月額入力。年間ベース値は月額×12として保存し、その年の月別上書きをリセット。
   setCellValue(rowId, year, monthly * 12);
   saveData();
   recalcAll();
+  if (block && cashNegativeAt(year)) {
+    data.cells[rowId] = prevCells; data.monthlyCells[rowId] = prevMonthly;
+    saveData();
+    generateMonthlyTable();
+    recalcAll();
+    alert('⚠ 手元現金が足りません。\n収入を増やすか、預金・投資への入れすぎを減らしてください。');
+  }
 }
 
 function onMonthlyCellInput(e) {
   const rowId = e.target.dataset.rowId;
   const month = parseInt(e.target.dataset.month);
   const year = data.monthlySelectedYear;
+  const block = isMoveFromCashRow(rowId);
+  const prevCells = block ? JSON.parse(JSON.stringify(data.cells[rowId] || {})) : null;
+  const prevMonthly = block ? JSON.parse(JSON.stringify(data.monthlyCells[rowId] || {})) : null;
   const value = parseYenInput(e.target.value);
   // 編集していない月を「いまの値」で固定してから、編集値を反映。
   for (let m = 1; m <= 12; m++) {
@@ -3129,6 +3159,13 @@ function onMonthlyCellInput(e) {
   data.cells[rowId][year] = sum;
   saveData();
   recalcAll();
+  if (block && cashNegativeAt(year)) {
+    data.cells[rowId] = prevCells; data.monthlyCells[rowId] = prevMonthly;
+    saveData();
+    generateMonthlyTable();
+    recalcAll();
+    alert('⚠ 手元現金が足りません。\n収入を増やすか、預金・投資への入れすぎを減らしてください。');
+  }
 }
 
 function resetMonthlyRow(rowId) {
@@ -3263,17 +3300,13 @@ function recalcAll() {
     let depositInflow = 0;
     let depositAssets = 0;
     (data.banks || []).forEach(b => {
-      let bal;
-      if (yearIdx === 0) {
-        bal = b.initialBalance || 0; // 初年度は手入力残高(貯金は翌年から反映)
-      } else {
-        const dep = getYearlyEffectiveValue(`bank_${b.id}_dep`, year);
-        bal = prevBankBal[b.id] + dep;
-        depositInflow += dep; // その年に現金から預金へ移した額
-        setComputedCell(`bank_${b.id}_bal`, year, bal); // 残高セル(2年目以降)を表示
-      }
+      const dep = getYearlyEffectiveValue(`bank_${b.id}_dep`, year);
+      // 残高 = 前年残高(初年度は最初の残高) ＋ その年の年間貯金額。貯金分は現金から預金へ移す。
+      const bal = prevBankBal[b.id] + dep;
+      depositInflow += dep;
       prevBankBal[b.id] = bal;
       depositAssets += bal;
+      setComputedCell(`bank_${b.id}_bal`, year, bal);
     });
 
     const cashAssets = prevCash + balance - investTotal - depositInflow;
