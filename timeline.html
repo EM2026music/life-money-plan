@@ -316,6 +316,7 @@
   tr.invhead-row td { background: #f4fafc; }
   tr.invhead-row td.row-label { background: #f4fafc; font-weight: 700; }
   .row-label.inv-sub { padding-left: 24px; font-weight: 400; color: var(--text-light); }
+  .bank-bal-label { font-size: 11px; color: var(--accent); font-weight: 700; margin-left: 6px; font-variant-numeric: tabular-nums; }
   .cell-input {
     width: 82px;
     border: none;
@@ -850,10 +851,18 @@ function buildAgeRows() {
   return rows;
 }
 
-const EVENT_ROWS = [
-  { section: 'ライフイベント', sectionType: 'event' },
-  { id: 'event', label: 'イベント', type: 'eventname' },
-];
+// ライフイベントの行を動的に生成。各イベントが1行(eventrow)で、該当年の列に金額を入力する。
+function buildEventRows() {
+  const rows = [{ section: 'ライフイベント', sectionType: 'event' }];
+  if (!data.lifeEvents.length) {
+    rows.push({ id: '_ev_empty', label: '（イベントなし　右上の ＋ ボタンで追加）', type: 'note' });
+    return rows;
+  }
+  data.lifeEvents.forEach(ev => {
+    rows.push({ id: 'lifeev_' + ev.id, label: ev.name, type: 'eventrow', eventId: ev.id });
+  });
+  return rows;
+}
 
 // 収入の行を動的に生成。収入項目(data.incomeItems)は自由に追加・改名・削除できる。
 function buildIncomeRows() {
@@ -1288,7 +1297,7 @@ function expenseCategoryRows() {
 function buildRows() {
   return [
     ...buildAgeRows(),
-    ...EVENT_ROWS,
+    ...buildEventRows(),
     ...buildIncomeRows(),
     { section: '支出（円/年）', sectionType: 'expenseGroup' },
     ...buildExpenseCategoryRows(),
@@ -2171,36 +2180,58 @@ function addLifeEventInline() {
     const years = getYears();
     return years.find(y => !used.has(y)) || years[years.length - 1];
   })();
-  data.lifeEvents.push({ id: 'ev' + Date.now() + Math.floor(Math.random() * 10000), name: 'イベント', year: nextYear, amount: 0 });
+  const id = 'ev' + Date.now() + Math.floor(Math.random() * 10000);
+  data.lifeEvents.push({ id, name: 'イベント', year: nextYear, amount: 0 });
+  saveData();
+  ROWS = buildRows();
+  generateTable();
+  generateMonthlyTable();
+  renderLifeEventSettings();
+  recalcAll();
+  scrollToNewRow('lifeev_' + id);
+}
+
+// グリッドのイベント行: 金額入力(該当年セル)
+function onEventRowAmount(id, raw) {
+  const ev = data.lifeEvents.find(e => e.id === id);
+  if (!ev) return;
+  ev.amount = fromYen(parseFloat(String(raw).replace(/[^0-9.\-]/g, '')) || 0);
   saveData();
   renderLifeEventSettings();
   recalcAll();
-  // ＋を押したら「ライフイベントの設定」を開いて、追加した行にスクロール＆名前入力にフォーカス
-  // (イベントは表では1行に各年の名称が並ぶ設計なので、入力は下の設定フォームで行う)
-  const body = document.getElementById('lifeEventSettingsBody');
-  if (body) body.classList.remove('collapsed-section');
-  const toggle = document.querySelector('[data-collapse-target="lifeEventSettingsBody"] .section-toggle');
-  if (toggle) toggle.textContent = '▼';
-  requestAnimationFrame(() => {
-    const rows = document.querySelectorAll('#lifeEventList .investment-row');
-    const last = rows[rows.length - 1];
-    if (last) {
-      last.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      const nameInput = last.querySelector('.inv-name');
-      if (nameInput) { nameInput.focus(); nameInput.select(); }
-    }
-  });
 }
 
-function onEventAmountChange(year, raw) {
-  const amount = fromYen(parseFloat(String(raw).replace(/[^0-9.\-]/g, '')) || 0);
-  const events = data.lifeEvents.filter(ev => ev.year === year);
-  if (events.length) {
-    events[0].amount = amount;
-  } else if (amount > 0) {
-    data.lifeEvents.push({ id: 'ev' + Date.now() + Math.floor(Math.random() * 10000), name: 'イベント', year, amount });
-  }
+// グリッドのイベント行: 名前変更
+function renameEventInline(id, name) {
+  const ev = data.lifeEvents.find(e => e.id === id);
+  if (!ev) return;
+  ev.name = name;
   saveData();
+  generateTable();
+  generateMonthlyTable();
+  renderLifeEventSettings();
+  recalcAll();
+}
+
+// グリッドのイベント行: 年変更(金額の入る列が移動する)
+function changeEventYear(id, raw) {
+  const ev = data.lifeEvents.find(e => e.id === id);
+  if (!ev) return;
+  ev.year = parseInt(raw) || data.startYear;
+  saveData();
+  generateTable();
+  generateMonthlyTable();
+  renderLifeEventSettings();
+  recalcAll();
+}
+
+// グリッドのイベント行: 削除
+function deleteEventInline(id) {
+  data.lifeEvents = data.lifeEvents.filter(e => e.id !== id);
+  saveData();
+  ROWS = buildRows();
+  generateTable();
+  generateMonthlyTable();
   renderLifeEventSettings();
   recalcAll();
 }
@@ -2403,6 +2434,12 @@ function buildEditableCategoryLabel(labelTd, row) {
     nameInput.value = bank ? bank.name : row.label;
     nameInput.addEventListener('change', e => renameBankInline(row.bankId, e.target.value));
     labelTd.appendChild(nameInput);
+    // 横スクロールしても残高が分かるよう、銀行名の右隣に残高を表示
+    const balSpan = document.createElement('span');
+    balSpan.className = 'bank-bal-label';
+    balSpan.dataset.bankBalLabel = row.bankId;
+    balSpan.textContent = '¥' + toYen(bank ? bank.balance : 0).toLocaleString();
+    labelTd.appendChild(balSpan);
     const del = document.createElement('button');
     del.type = 'button';
     del.className = 'label-del-btn';
@@ -2515,6 +2552,38 @@ function generateTable() {
       del.textContent = '✕';
       del.addEventListener('click', () => deleteFamilyMember(row.familyId));
       labelTd.appendChild(del);
+    } else if (row.type === 'eventrow') {
+      // イベント名(改名可)+ 年の直接入力 + 削除
+      const ev = data.lifeEvents.find(e => e.id === row.eventId);
+      const nameInput = document.createElement('input');
+      nameInput.type = 'text';
+      nameInput.className = 'label-edit-input';
+      nameInput.value = ev ? ev.name : row.label;
+      nameInput.addEventListener('change', e => renameEventInline(row.eventId, e.target.value));
+      labelTd.appendChild(nameInput);
+      const yLabel = document.createElement('span');
+      yLabel.className = 'birth-label';
+      yLabel.textContent = '年';
+      labelTd.appendChild(yLabel);
+      const yearInput = document.createElement('input');
+      yearInput.type = 'number';
+      yearInput.className = 'birth-inline';
+      yearInput.value = ev ? ev.year : data.startYear;
+      yearInput.addEventListener('change', e => changeEventYear(row.eventId, e.target.value));
+      labelTd.appendChild(yearInput);
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'label-del-btn';
+      del.title = 'このイベントを削除';
+      del.textContent = '✕';
+      del.addEventListener('click', () => deleteEventInline(row.eventId));
+      labelTd.appendChild(del);
+    } else if (row.id === 'bankTotal') {
+      labelTd.appendChild(document.createTextNode('預金合計'));
+      const span = document.createElement('span');
+      span.className = 'bank-bal-label';
+      span.dataset.bankTotalLabel = '1';
+      labelTd.appendChild(span);
     } else {
       labelTd.textContent = row.label;
       if (row.invId && row.type !== 'invhead') labelTd.classList.add('inv-sub');
@@ -2537,31 +2606,24 @@ function generateTable() {
         td.className = 'computed-cell';
         td.dataset.rowId = row.id;
         td.dataset.year = year;
-      } else if (row.type === 'eventname') {
-        td.className = 'event-name-cell';
-        const evInput = document.createElement('input');
-        evInput.className = 'event-cell-input';
-        evInput.type = 'text';
-        evInput.dataset.rowId = row.id;
-        evInput.dataset.year = year;
-        evInput.value = lifeEventNames(year);
-        evInput.placeholder = '行事名';
-        evInput.title = 'この年のライフイベント名';
-        evInput.addEventListener('change', onEventNameChange);
-        td.appendChild(evInput);
-        const costYen = toYen(lifeEventCost(year));
-        const amtInput = document.createElement('input');
-        amtInput.className = 'event-amount-input';
-        amtInput.type = 'text';
-        amtInput.setAttribute('inputmode', 'numeric');
-        amtInput.dataset.evYear = year;
-        amtInput.placeholder = '金額(円)';
-        amtInput.value = costYen ? costYen.toLocaleString() : '';
-        amtInput.title = 'この年のイベント費';
-        amtInput.addEventListener('focus', () => { amtInput.value = amtInput.value.replace(/[,，\s]/g, ''); amtInput.select(); });
-        amtInput.addEventListener('blur', () => { const n = parseInt(amtInput.value.replace(/[^0-9]/g, '')) || 0; amtInput.value = n ? n.toLocaleString() : ''; });
-        amtInput.addEventListener('change', e => onEventAmountChange(parseInt(e.target.dataset.evYear), e.target.value));
-        td.appendChild(amtInput);
+      } else if (row.type === 'eventrow') {
+        // イベントは該当年(ev.year)の列だけ金額入力。他の年は「·」。
+        const ev = data.lifeEvents.find(e => e.id === row.eventId);
+        if (ev && ev.year === year) {
+          const input = document.createElement('input');
+          input.className = 'cell-input';
+          input.type = 'text';
+          input.dataset.eventAmt = ev.id;
+          input.value = formatInputYen(ev.amount);
+          input.title = `${ev.name}（${ev.year}年）の金額`;
+          attachMoneyInputFormat(input);
+          input.addEventListener('input', e => onEventRowAmount(ev.id, e.target.value));
+          td.appendChild(input);
+        } else {
+          td.style.color = 'var(--text-light)';
+          td.style.textAlign = 'center';
+          td.textContent = '·';
+        }
       } else if (row.type === 'initbal') {
         // 初期保有額(今すでに持っている額)は開始年の1セルだけ入力可。他の年は「—」。
         if (year === years[0]) {
@@ -2650,7 +2712,7 @@ function applyYearlyFreeze() {
   const thead = scroll.querySelector('thead');
   const headH = thead ? thead.getBoundingClientRect().height : 0;
   const bodyRows = Array.from(scroll.querySelectorAll('tbody tr'));
-  const freezeCount = (1 + data.family.length) + EVENT_ROWS.length;
+  const freezeCount = 1 + data.family.length; // 年齢帯+家族まで固定。ライフイベント以降はスクロール。
 
   bodyRows.forEach(tr => {
     tr.classList.remove('frozen-row', 'frozen-row-last');
@@ -2754,27 +2816,6 @@ function renameBankInline(id, name) {
   generateMonthlyTable();
 }
 
-// ライフイベント行のセルに直接イベント名を入力したとき。その年のイベントを作成/更新/削除する。
-// (金額は「ライフイベントの設定」で設定。グリッドからは名前のみ編集)
-function onEventNameChange(e) {
-  const year = parseInt(e.target.dataset.year);
-  const value = e.target.value.trim();
-  const events = data.lifeEvents.filter(ev => ev.year === year);
-  if (value) {
-    if (events.length) events[0].name = value;
-    else data.lifeEvents.push({ id: 'ev' + Date.now() + Math.floor(Math.random() * 10000), name: value, year, amount: 0 });
-  } else {
-    if (events.length === 1 && (events[0].amount || 0) === 0) {
-      data.lifeEvents = data.lifeEvents.filter(ev => ev !== events[0]);
-    } else if (events.length) {
-      events[0].name = '';
-    }
-  }
-  saveData();
-  renderLifeEventSettings();
-  recalcAll();
-}
-
 function setComputedCell(rowId, year, value) {
   const td = document.querySelector(`#timelineBody td.computed-cell[data-row-id="${rowId}"][data-year="${year}"]`);
   if (!td) return;
@@ -2801,10 +2842,19 @@ function updateInputCells(years) {
     const input = document.querySelector(`#timelineBody input[data-inv-initbal="${inv.id}"]`);
     if (input && input !== document.activeElement) input.value = formatInputYen(inv.initialBalance);
   });
-  // 預金の残高セルを bank.balance と同期
+  // 預金の残高セル + 銀行名の右隣の残高表示 + 預金合計表示を同期
   (data.banks || []).forEach(bank => {
     const input = document.querySelector(`#timelineBody input[data-bank-bal="${bank.id}"]`);
     if (input && input !== document.activeElement) input.value = formatInputYen(bank.balance);
+    const lbl = document.querySelector(`#timelineBody [data-bank-bal-label="${bank.id}"]`);
+    if (lbl) lbl.textContent = '¥' + toYen(bank.balance).toLocaleString();
+  });
+  const totalLbl = document.querySelector('#timelineBody [data-bank-total-label]');
+  if (totalLbl) totalLbl.textContent = '¥' + toYen((data.banks || []).reduce((s, b) => s + (b.balance || 0), 0)).toLocaleString();
+  // イベントの金額セルを同期
+  (data.lifeEvents || []).forEach(ev => {
+    const input = document.querySelector(`#timelineBody input[data-event-amt="${ev.id}"]`);
+    if (input && input !== document.activeElement) input.value = formatInputYen(ev.amount);
   });
 }
 
@@ -3154,14 +3204,6 @@ function recalcAll() {
     const expTotal = expCategoryTotal + eventCost + insurancePremium;
     const balance = incomeTotal - expTotal;
     if (year === years[0]) firstYearStats = { year, income: incomeTotal, expense: expTotal, balance };
-
-    const evInput = document.querySelector(`#timelineBody input[data-row-id="event"][data-year="${year}"]`);
-    if (evInput && evInput !== document.activeElement) evInput.value = lifeEventNames(year);
-    const evAmtInput = document.querySelector(`#timelineBody .event-amount-input[data-ev-year="${year}"]`);
-    if (evAmtInput && evAmtInput !== document.activeElement) {
-      const c = toYen(lifeEventCost(year));
-      evAmtInput.value = c ? c.toLocaleString() : '';
-    }
 
     categoryStore.groups.forEach(group => {
       const cats = categoryStore.categories.filter(c => c.groupId === group.id);
