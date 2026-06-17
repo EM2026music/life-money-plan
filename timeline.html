@@ -113,7 +113,18 @@
     .sidebar-title { display: none; }
     .sidebar a { padding: 8px 12px; font-size: 14px; border-left: none; border-radius: 6px; }
     .sidebar a.sidebar-sub { margin-top: 0; }
-    body { padding-left: 16px; padding-right: 16px; }
+    body { padding-left: 10px; padding-right: 10px; }
+    /* スマホ: 35年テーブルが窮屈なので、セル・文字を詰めて一度に見える量を増やす */
+    h1 { font-size: 20px; }
+    table.timeline { font-size: 11px; }
+    table.timeline th, table.timeline td { padding: 2px 4px; }
+    table.timeline thead th { padding: 3px 4px; }
+    .cell-input { width: 52px; font-size: 11px; }
+    .row-label { min-width: 96px; }
+    .label-edit-input { width: 58px; font-size: 11px; }
+    .label-edit-input.indented { width: 52px; }
+    .row-label.inv-sub { padding-left: 12px; }
+    .birth-inline { width: 56px; }
   }
   .card {
     background: var(--card-bg);
@@ -294,6 +305,17 @@
     font-family: inherit;
     vertical-align: middle;
   }
+  /* 青い帯(セクション)の中身を横スクロールしても左端に固定し、＋ボタンが消えないように */
+  tr.section-row td .section-inner {
+    position: sticky;
+    left: 4px;
+    display: inline-flex;
+    align-items: center;
+  }
+  /* 投資の見出し行(投資名・削除)と、その配下の項目(初期保有額/積立額/年率/残高)のインデント */
+  tr.invhead-row td { background: #f4fafc; }
+  tr.invhead-row td.row-label { background: #f4fafc; font-weight: 700; }
+  .row-label.inv-sub { padding-left: 24px; font-weight: 400; color: var(--text-light); }
   .cell-input {
     width: 82px;
     border: none;
@@ -1188,10 +1210,11 @@ function buildInvestmentRows() {
     return rows;
   }
   data.investments.forEach(inv => {
-    rows.push({ id: `inv_${inv.id}_initbal`, label: `${inv.name} 初期保有額`, type: 'initbal', invId: inv.id });
-    rows.push({ id: `inv_${inv.id}_contrib`, label: `${inv.name} 積立額`, type: 'editable', default: 0, forwardFill: 'full', invId: inv.id });
-    rows.push({ id: `inv_${inv.id}_rate`, label: `${inv.name} 年率(%)`, type: 'editable', default: inv.rate, forwardFill: 'full', invId: inv.id, isRate: true });
-    rows.push({ id: `inv_${inv.id}_balance`, label: `${inv.name} 残高`, type: 'computed', invId: inv.id });
+    rows.push({ id: `inv_${inv.id}_head`, label: inv.name, type: 'invhead', invId: inv.id });
+    rows.push({ id: `inv_${inv.id}_initbal`, label: '初期保有額', type: 'initbal', invId: inv.id });
+    rows.push({ id: `inv_${inv.id}_contrib`, label: '積立額', type: 'editable', default: 0, forwardFill: 'full', invId: inv.id });
+    rows.push({ id: `inv_${inv.id}_rate`, label: '年率(%)', type: 'editable', default: inv.rate, forwardFill: 'full', invId: inv.id, isRate: true });
+    rows.push({ id: `inv_${inv.id}_balance`, label: '残高', type: 'computed', invId: inv.id });
   });
   return rows;
 }
@@ -1649,8 +1672,8 @@ function renderLifeEventSettings() {
     container.appendChild(p);
   }
 
-  // 年でソートして表示（データ自体の順番は変えない）
-  const sorted = [...data.lifeEvents].sort((a, b) => (a.year || 0) - (b.year || 0));
+  // 追加した順(配列順)で表示。「ライフイベントを追加」で増やすと一番下に出る。
+  const sorted = [...data.lifeEvents];
   sorted.forEach(ev => {
     const row = document.createElement('div');
     row.className = 'investment-row';
@@ -2306,19 +2329,15 @@ function buildEditableCategoryLabel(labelTd, row) {
     return;
   }
 
-  // 投資項目: 名前をその場で編集・削除(「○○ 投資額」の○○部分)
-  if (row.invId) {
+  // 投資の見出し行: 名前をその場で編集・削除(配下に初期保有額/積立額/年率/残高が並ぶ)
+  if (row.type === 'invhead') {
     const inv = data.investments.find(x => x.id === row.invId);
     const nameInput = document.createElement('input');
     nameInput.type = 'text';
     nameInput.className = 'label-edit-input';
-    nameInput.value = inv ? inv.name : row.label.replace(/ ?積立額$/, '');
+    nameInput.value = inv ? inv.name : row.label;
     nameInput.addEventListener('change', e => renameInvestmentInline(row.invId, e.target.value));
     labelTd.appendChild(nameInput);
-    const suffix = document.createElement('span');
-    suffix.className = 'label-suffix';
-    suffix.textContent = '積立額';
-    labelTd.appendChild(suffix);
     const del = document.createElement('button');
     del.type = 'button';
     del.className = 'label-del-btn';
@@ -2370,7 +2389,7 @@ function generateTable() {
       const addBtnHtml = row.sectionType
         ? `<button type="button" class="section-add-btn" data-section-type="${row.sectionType}">＋</button>`
         : '';
-      td.innerHTML = `<button type="button" class="section-toggle-btn" data-section="${row.section}">${collapsed ? '▶' : '▼'}</button>${addBtnHtml}${row.section}`;
+      td.innerHTML = `<span class="section-inner"><button type="button" class="section-toggle-btn" data-section="${row.section}">${collapsed ? '▶' : '▼'}</button>${addBtnHtml}${row.section}</span>`;
       tr.appendChild(td);
       body.appendChild(tr);
       return;
@@ -2398,10 +2417,11 @@ function generateTable() {
       if (collapsedSections.has(currentSection)) tr.classList.add('sec-hidden');
     }
     if (row.type === 'computed') tr.className += ' computed-row';
+    if (row.type === 'invhead') tr.className += ' invhead-row';
 
     const labelTd = document.createElement('td');
     labelTd.className = 'row-label';
-    if (row.id.startsWith('catgrp_') || row.catId !== undefined || row.incItem || row.insId || (row.invId && row.id.endsWith('_contrib'))) {
+    if (row.id.startsWith('catgrp_') || row.catId !== undefined || row.incItem || row.insId || row.type === 'invhead') {
       buildEditableCategoryLabel(labelTd, row);
     } else if (row.type === 'age' && row.familyId) {
       // 名前(改名可)+ 生まれ年の直接入力 + 削除(基本情報を開かなくてもここで変更できる)
@@ -2432,6 +2452,7 @@ function generateTable() {
       labelTd.appendChild(del);
     } else {
       labelTd.textContent = row.label;
+      if (row.invId && row.type !== 'invhead') labelTd.classList.add('inv-sub');
     }
     if (row.catId !== undefined && row.groupId) {
       tr.dataset.parentGroup = row.groupId;
@@ -2441,7 +2462,9 @@ function generateTable() {
 
     years.forEach(year => {
       const td = document.createElement('td');
-      if (row.type === 'age') {
+      if (row.type === 'invhead') {
+        // 見出し行は値セルなし(名前と削除ボタンのみ)
+      } else if (row.type === 'age') {
         td.className = 'age-cell';
         td.dataset.rowId = row.id;
         td.dataset.year = year;
