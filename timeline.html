@@ -3203,7 +3203,7 @@ function recalcAll() {
   const prevBalances = {};
   data.investments.forEach(inv => { prevBalances[inv.id] = inv.initialBalance; });
 
-  const cashArr = [], investArr = [], totalArr = [];
+  const cashArr = [], investArr = [], totalArr = [], depositArr = [];
   let firstYearStats = null;
 
   years.forEach(year => {
@@ -3257,12 +3257,13 @@ function recalcAll() {
     cashArr.push(cashAssets);
     investArr.push(investAssetsTotal);
     totalArr.push(totalAssets);
+    depositArr.push(depositAssets);
 
     prevCash = cashAssets;
   });
 
   updateInputCells(years);
-  updateChart(years, cashArr, investArr, totalArr);
+  updateChart(years, cashArr, investArr, totalArr, depositArr);
   updateSummary(years, cashArr, investArr, totalArr, firstYearStats);
   updateExpenseDonut(years[0]);
   // TOPページ用に、計算した予測総資産のスナップショットを保存(円)。
@@ -3287,13 +3288,14 @@ function abbrevYen(v) {
   return Math.round(v).toLocaleString() + '円';
 }
 
-function updateChart(years, cashArr, investArr, totalArr) {
+function updateChart(years, cashArr, investArr, totalArr, depositArr) {
   const ctx = document.getElementById('assetChart').getContext('2d');
   const labels = years.map(y => y + '年');
   // チャートも円表示。内部配列は万円なので円に変換して描画する。
   const cashYen = cashArr.map(toYen);
   const investYen = investArr.map(toYen);
   const totalYen = totalArr.map(toYen);
+  const depositYen = (depositArr || []).map(toYen);
   const mk = (label, data, color, opts) => Object.assign({
     label, data, borderColor: color, backgroundColor: color + '22',
     borderWidth: 2.5, tension: 0.35, fill: true,
@@ -3301,6 +3303,7 @@ function updateChart(years, cashArr, investArr, totalArr) {
   }, opts || {});
   const datasets = [
     mk('現金資産', cashYen, '#38b6d3'),
+    mk('預金', depositYen, '#f5a623'),
     mk('投資資産合計', investYen, '#4caf7d'),
     mk('総資産', totalYen, '#2c6b7a', { borderDash: [6, 4], fill: false, borderWidth: 2 }),
   ];
