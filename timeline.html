@@ -882,13 +882,11 @@ const EXPENSE_SUMMARY_ROWS = [
 
 const ASSET_ROWS = [
   { section: '資産（円）' },
-  { id: 'balance',      label: '年間収支',     type: 'computed' },
-  { id: 'investTotal',  label: '投資合計',     type: 'computed' },
-  { id: 'depositTotal', label: '預金合計',     type: 'computed' },
-  { id: 'cashAssets',   label: '現金資産',     type: 'computed' },
-  { id: 'investAssets', label: '投資資産合計', type: 'computed' },
-  { id: 'depositAssets', label: '預金資産合計', type: 'computed' },
-  { id: 'totalAssets',  label: '総資産',       type: 'computed' },
+  { id: 'balance',      label: '年間収支',       type: 'computed' },
+  { id: 'cashAssets',   label: '現金資産',       type: 'computed' },
+  { id: 'investAssets', label: '投資資産（残高）', type: 'computed' },
+  { id: 'depositAssets', label: '預金（残高）',   type: 'computed' },
+  { id: 'totalAssets',  label: '総資産',         type: 'computed' },
 ];
 
 // 収入合計に算入する収入項目のID一覧(動的)。
@@ -3193,8 +3191,6 @@ function recalcAll() {
     setComputedCell('incomeTotal', year, incomeTotal);
     setComputedCell('expTotal', year, expTotal);
     setComputedCell('balance', year, balance);
-    setComputedCell('investTotal', year, investTotal);
-    setComputedCell('depositTotal', year, depositInflow);
     setComputedCell('cashAssets', year, cashAssets);
     setComputedCell('investAssets', year, investAssetsTotal);
     setComputedCell('depositAssets', year, depositAssets);
