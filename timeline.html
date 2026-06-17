@@ -1263,7 +1263,7 @@ function buildBankRows() {
   data.banks.forEach(b => {
     rows.push({ id: `bank_${b.id}_head`, label: b.name, type: 'bankhead', bankId: b.id });
     rows.push({ id: `bank_${b.id}_initbal`, label: '今ある残高', type: 'bankinitbal', bankId: b.id });
-    rows.push({ id: `bank_${b.id}_dep`, label: '毎年の貯金', type: 'editable', default: 0, forwardFill: 'none', bankId: b.id });
+    rows.push({ id: `bank_${b.id}_dep`, label: '年間貯金額', type: 'editable', default: 0, forwardFill: 'none', bankId: b.id });
   });
   return rows;
 }
@@ -2581,15 +2581,19 @@ function generateTable() {
       del.addEventListener('click', () => deleteEventInline(row.eventId));
       labelTd.appendChild(del);
     } else if (row.id === 'cashAssets') {
-      // 「現金」行: ラベルに今ある手元現金の入力欄を付ける（各年セルは年末残高を表示）
+      // 「手元現金」行: ラベルに"最初の額"の入力欄。各年の列は自動計算の残高(年末)。
       labelTd.appendChild(document.createTextNode('手元現金 '));
+      const hint = document.createElement('span');
+      hint.className = 'label-suffix';
+      hint.textContent = '最初→';
+      labelTd.appendChild(hint);
       const input = document.createElement('input');
       input.type = 'text';
       input.className = 'label-edit-input';
       input.style.width = '80px';
       input.dataset.cashInitial = '1';
       input.value = formatInputYen(data.initialAssets);
-      input.title = '今ある手元現金（銀行に預けてない分。なければ0）';
+      input.title = '最初の手元現金（今ある分。なければ0）。各年の数字は自動計算される残高です。';
       attachMoneyInputFormat(input);
       input.addEventListener('input', onCashInitialInput);
       labelTd.appendChild(input);
