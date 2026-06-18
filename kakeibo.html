@@ -736,20 +736,19 @@ function renderTransactions() {
     tr.appendChild(dateTd);
 
     const whoTd = document.createElement('td');
-    const listId = 'whoList_' + t.id;
-    const datalist = document.createElement('datalist');
-    datalist.id = listId;
-    getWhoOptions().forEach(opt => {
-      const o = document.createElement('option'); o.value = opt; datalist.appendChild(o);
+    // 「誰が」はプルダウン(select)。共通＋人生キャッシュフローの家族名から選ぶ。
+    const whoSelect = document.createElement('select');
+    whoSelect.className = 'who-input';
+    const whoOpts = getWhoOptions();
+    if (t.who && !whoOpts.includes(t.who)) whoOpts.push(t.who); // 既存の手入力値も残す
+    whoOpts.forEach(opt => {
+      const o = document.createElement('option');
+      o.value = opt; o.textContent = opt;
+      whoSelect.appendChild(o);
     });
-    const whoInput = document.createElement('input');
-    whoInput.type = 'text';
-    whoInput.className = 'who-input';
-    whoInput.setAttribute('list', listId);
-    whoInput.value = t.who || '共通';
-    whoInput.addEventListener('input', () => { t.who = whoInput.value; saveData(); });
-    whoTd.appendChild(datalist);
-    whoTd.appendChild(whoInput);
+    whoSelect.value = t.who || '共通';
+    whoSelect.addEventListener('change', () => { t.who = whoSelect.value; saveData(); });
+    whoTd.appendChild(whoSelect);
     tr.appendChild(whoTd);
 
     const whereTd = document.createElement('td');
