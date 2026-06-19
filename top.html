@@ -93,10 +93,6 @@
     opacity: .95;
   }
   .hero-future strong { font-size: 16px; }
-  .hero-card { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-  .hero-text { flex: 1; min-width: 0; }
-  .hero-art { flex: 0 0 auto; width: 150px; height: 100px; opacity: .95; }
-  @media (max-width: 560px) { .hero-art { display: none; } }
   @media (max-width: 480px) { .hero-value { font-size: 28px; } }
   /* 家族構成エディタ */
   .family-section { margin-top: 16px; }
@@ -338,12 +334,12 @@
     <div class="sidebar-title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 210 60" width="172" style="display:block">
   <defs>
     <linearGradient id="d4l-sw" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%" stop-color="#c8a45c"/>
-      <stop offset="100%" stop-color="#e8d5a8"/>
+      <stop offset="0%" stop-color="#2b8ee0"/>
+      <stop offset="100%" stop-color="#80d4f8"/>
     </linearGradient>
   </defs>
   <text font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif" font-weight="800">
-    <tspan x="2" y="40" font-size="32" fill="#172246">Design</tspan><tspan font-size="32" fill="#c8a45c" dx="2"> 4 </tspan><tspan font-size="32" fill="#172246">Life</tspan>
+    <tspan x="2" y="40" font-size="32" fill="#172246">Design</tspan><tspan font-size="32" fill="#4aacf5" dx="2"> 4 </tspan><tspan font-size="32" fill="#172246">Life</tspan>
   </text>
   <path d="M2,52 C60,65 140,58 208,45" stroke="url(#d4l-sw)" stroke-width="2.2" fill="none" stroke-linecap="round"/>
 </svg></div>
@@ -357,12 +353,12 @@
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 210 60" width="240" role="img" aria-label="Design 4 Life" style="display:block">
       <defs>
         <linearGradient id="d4l-sw-h1" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stop-color="#c8a45c"/>
-          <stop offset="100%" stop-color="#e8d5a8"/>
+          <stop offset="0%" stop-color="#2b8ee0"/>
+          <stop offset="100%" stop-color="#80d4f8"/>
         </linearGradient>
       </defs>
       <text font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif" font-weight="800">
-        <tspan x="2" y="40" font-size="32" fill="#172246">Design</tspan><tspan font-size="32" fill="#c8a45c" dx="2"> 4 </tspan><tspan font-size="32" fill="#172246">Life</tspan>
+        <tspan x="2" y="40" font-size="32" fill="#172246">Design</tspan><tspan font-size="32" fill="#4aacf5" dx="2"> 4 </tspan><tspan font-size="32" fill="#172246">Life</tspan>
       </text>
       <path d="M2,52 C60,65 140,58 208,45" stroke="url(#d4l-sw-h1)" stroke-width="2.2" fill="none" stroke-linecap="round"/>
     </svg>
@@ -376,27 +372,10 @@
   </div>
 
   <div class="card hero-card">
-    <div class="hero-text">
-      <div class="hero-label">現在の総資産</div>
-      <div class="hero-value" id="heroTotal">¥0</div>
-      <div class="hero-sub" id="heroSub"></div>
-      <div class="hero-future" id="heroFuture" style="display:none"></div>
-    </div>
-    <svg class="hero-art" viewBox="0 0 150 100" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <!-- 右肩上がりの資産グラフ -->
-      <polyline points="8,82 38,68 66,72 96,40 138,12" stroke="#c8a45c" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-      <circle cx="138" cy="12" r="4.5" fill="#c8a45c"/>
-      <circle cx="138" cy="12" r="9" fill="#c8a45c" opacity="0.25"/>
-      <!-- 家 -->
-      <path d="M14,64 L27,53 L40,64 M17,62 L17,80 L37,80 L37,62" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>
-      <!-- 家族(2人) -->
-      <circle cx="58" cy="68" r="4" stroke="#ffffff" stroke-width="2" opacity="0.85"/>
-      <path d="M52,82 Q58,74 64,82" stroke="#ffffff" stroke-width="2" stroke-linecap="round" opacity="0.85"/>
-      <circle cx="72" cy="71" r="3" stroke="#ffffff" stroke-width="2" opacity="0.85"/>
-      <path d="M67,82 Q72,76 77,82" stroke="#ffffff" stroke-width="2" stroke-linecap="round" opacity="0.85"/>
-      <!-- 基準線 -->
-      <line x1="6" y1="88" x2="144" y2="88" stroke="#ffffff" stroke-width="1" opacity="0.25"/>
-    </svg>
+    <div class="hero-label">現在の総資産</div>
+    <div class="hero-value" id="heroTotal">¥0</div>
+    <div class="hero-sub" id="heroSub"></div>
+    <div class="hero-future" id="heroFuture" style="display:none"></div>
   </div>
 
   <div class="card">

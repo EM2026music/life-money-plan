@@ -442,12 +442,12 @@
     <div class="sidebar-title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 210 60" width="172" style="display:block">
   <defs>
     <linearGradient id="d4l-sw" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%" stop-color="#c8a45c"/>
-      <stop offset="100%" stop-color="#e8d5a8"/>
+      <stop offset="0%" stop-color="#2b8ee0"/>
+      <stop offset="100%" stop-color="#80d4f8"/>
     </linearGradient>
   </defs>
   <text font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif" font-weight="800">
-    <tspan x="2" y="40" font-size="32" fill="#172246">Design</tspan><tspan font-size="32" fill="#c8a45c" dx="2"> 4 </tspan><tspan font-size="32" fill="#172246">Life</tspan>
+    <tspan x="2" y="40" font-size="32" fill="#172246">Design</tspan><tspan font-size="32" fill="#4aacf5" dx="2"> 4 </tspan><tspan font-size="32" fill="#172246">Life</tspan>
   </text>
   <path d="M2,52 C60,65 140,58 208,45" stroke="url(#d4l-sw)" stroke-width="2.2" fill="none" stroke-linecap="round"/>
 </svg></div>
@@ -732,9 +732,9 @@ function emptyTx() {
 
 function renderTransactions() {
   const month = getMonthData(currentMonth);
-  // 開いてすぐ書けるよう、空のときは最初から3行用意する
+  // 開いてすぐ書けるよう、空のときは最初から5行用意する
   if (!month.transactions || month.transactions.length === 0) {
-    month.transactions = [emptyTx(), emptyTx(), emptyTx()];
+    month.transactions = [emptyTx(), emptyTx(), emptyTx(), emptyTx(), emptyTx()];
   }
   const body = document.getElementById('transactionBody');
   body.innerHTML = '';
