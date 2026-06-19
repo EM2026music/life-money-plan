@@ -71,6 +71,29 @@
   .t-modern .chip { background: #eff4ff; color: var(--main); }
   .t-zaim .chip { background: #e6f3ea; color: var(--main); }
   .note { font-size: 11px; color: var(--sub); margin-top: 6px; }
+
+  /* 年次タイムライン見本(②信頼の紺) */
+  .yearly-demo { max-width: 980px; margin: 40px auto 0; }
+  .yearly-demo h1 { margin-bottom: 14px; }
+  .yd-wrap { background: #fff; border-radius: 14px; box-shadow: 0 6px 20px rgba(0,0,0,.10); overflow: hidden; }
+  .yd-head { background: linear-gradient(135deg,#1a3a5c,#12283f); color:#fff; padding: 16px 20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; }
+  .yd-head .v { font-size: 24px; font-weight: 800; }
+  .yd-head .l { font-size: 12px; opacity:.85; }
+  .yd-head .gold { color:#c8a45c; }
+  .yd-body { overflow-x:auto; }
+  table.yd { border-collapse: collapse; width:100%; font-size:12px; font-variant-numeric: tabular-nums; }
+  table.yd th, table.yd td { padding: 6px 12px; text-align:right; border-bottom:1px solid #eef1f5; white-space:nowrap; }
+  table.yd thead th { background:#f5f7fa; color:#1a3a5c; font-weight:700; border-bottom:2px solid #c8a45c; position:sticky; top:0; }
+  table.yd td:first-child, table.yd th:first-child { text-align:left; font-weight:600; color:#1a3a5c; background:#fafbfc; }
+  table.yd tr.section td { background:#eef1f5; color:#1a3a5c; font-weight:700; text-align:left; }
+  table.yd tr.total td { font-weight:800; color:#1a3a5c; border-top:2px solid #c8a45c; }
+  table.yd td.neg { color:#d9534f; font-weight:700; }
+  .yd-graph { padding: 16px 20px; }
+  .yd-graph .bars { display:flex; align-items:flex-end; gap:6px; height:120px; }
+  .yd-graph .bar { flex:1; background:linear-gradient(180deg,#3a6ea5,#1a3a5c); border-radius:4px 4px 0 0; }
+  .yd-graph .bar.warn { background:linear-gradient(180deg,#e88,#d9534f); }
+  .yd-cap { font-size:12px; color:#6b7a8c; margin-top:8px; }
+  .yd-cap b { color:#d9534f; }
 </style>
 </head>
 <body>
@@ -194,6 +217,57 @@
     </div>
   </div>
 
+</div>
+
+<!-- ② 信頼の紺 ― 年次タイムライン見本 -->
+<div class="yearly-demo">
+  <h1>② 信頼の紺 ― 年次タイムライン</h1>
+  <div class="yd-wrap">
+    <div class="yd-head">
+      <div>
+        <div class="l">2061年（35年後）の総資産</div>
+        <div class="v">¥ -1,240,000</div>
+      </div>
+      <div style="text-align:right;">
+        <div class="l">いちばん増える年</div>
+        <div class="v gold">¥ 48,200,000</div>
+      </div>
+    </div>
+    <div class="yd-body">
+      <table class="yd">
+        <thead>
+          <tr><th>項目</th><th>2026</th><th>2027</th><th>2028</th><th>…</th><th>2045</th><th>…</th><th>2061</th></tr>
+        </thead>
+        <tbody>
+          <tr class="section"><td colspan="8">年齢</td></tr>
+          <tr><td>パパ</td><td>40</td><td>41</td><td>42</td><td>…</td><td>59</td><td>…</td><td>75</td></tr>
+          <tr><td>長男</td><td>8</td><td>9</td><td>10</td><td>…</td><td>27</td><td>…</td><td>43</td></tr>
+          <tr class="section"><td colspan="8">収入・支出</td></tr>
+          <tr><td>収入合計</td><td>7,000,000</td><td>7,000,000</td><td>7,000,000</td><td>…</td><td>7,000,000</td><td>…</td><td>2,400,000</td></tr>
+          <tr><td>支出合計</td><td>5,000,000</td><td>5,200,000</td><td>5,400,000</td><td>…</td><td>6,800,000</td><td>…</td><td>3,000,000</td></tr>
+          <tr class="section"><td colspan="8">資産</td></tr>
+          <tr><td>手元現金</td><td>340万</td><td>360万</td><td>380万</td><td>…</td><td>520万</td><td>…</td><td class="neg">-124万</td></tr>
+          <tr><td>銀行預金</td><td>600万</td><td>700万</td><td>800万</td><td>…</td><td>1,800万</td><td>…</td><td>1,200万</td></tr>
+          <tr><td>投資資産</td><td>294万</td><td>360万</td><td>430万</td><td>…</td><td>2,500万</td><td>…</td><td>0</td></tr>
+          <tr class="total"><td>総資産</td><td>1,234万</td><td>1,420万</td><td>1,610万</td><td>…</td><td>4,820万</td><td>…</td><td class="neg">-124万</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="yd-graph">
+      <div class="bars">
+        <div class="bar" style="height:25%"></div>
+        <div class="bar" style="height:30%"></div>
+        <div class="bar" style="height:38%"></div>
+        <div class="bar" style="height:55%"></div>
+        <div class="bar" style="height:78%"></div>
+        <div class="bar" style="height:100%"></div>
+        <div class="bar" style="height:72%"></div>
+        <div class="bar" style="height:40%"></div>
+        <div class="bar warn" style="height:8%"></div>
+      </div>
+      <div class="yd-cap">資産推移グラフ。<b>2061年に資産が底をつく</b>のが赤で一目で分かる。</div>
+    </div>
+  </div>
 </div>
 </body>
 </html>
