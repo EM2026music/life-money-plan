@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>デザイン候補 - Design 4 Life</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px;
+    font-family: "Hiragino Sans","Yu Gothic","Segoe UI",system-ui,sans-serif;
+    background: #e9edf1; color: #222;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1 { font-size: 20px; text-align: center; margin: 0 0 6px; }
+  .intro { text-align: center; font-size: 13px; color: #667; margin: 0 0 24px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 22px; max-width: 1200px; margin: 0 auto; }
+
+  .sample { border-radius: 16px; overflow: hidden; box-shadow: 0 6px 20px rgba(0,0,0,.12); }
+  .sample .tag { font-size: 13px; font-weight: 700; padding: 8px 14px; color: #fff; }
+  .demo { padding: 18px; min-height: 360px; }
+
+  /* 各テーマの変数 */
+  .t-water  { --main:#38b6d3; --main2:#2c8fae; --accent:#38b6d3; --bg:linear-gradient(180deg,#f4fbfe,#eef7fb); --card:#fff; --text:#2c3a42; --sub:#7c8d97; --radius:14px; }
+  .t-navy   { --main:#1a3a5c; --main2:#12283f; --accent:#c8a45c; --bg:#eef1f5; --card:#fff; --text:#1a3a5c; --sub:#6b7a8c; --radius:8px; }
+  .t-modern { --main:#2563eb; --main2:#1e40af; --accent:#2563eb; --bg:#ffffff; --card:#f8fafc; --text:#1f2937; --sub:#94a3b8; --radius:12px; }
+  .t-warm   { --main:#ff8c42; --main2:#f5701e; --accent:#ff8c42; --bg:linear-gradient(180deg,#fff8f2,#fff1e6); --card:#fff; --text:#5a3a2a; --sub:#b08a6a; --radius:20px; }
+  .t-zaim   { --main:#3b9c5a; --main2:#2e7d46; --accent:#3b9c5a; --bg:#f3f7f3; --card:#fff; --text:#2a3a2a; --sub:#8a9a8a; --radius:10px; }
+
+  .demo { background: var(--bg); }
+  .tag { background: var(--main); }
+
+  .hero {
+    background: linear-gradient(135deg, var(--main), var(--main2));
+    color: #fff; border-radius: var(--radius); padding: 18px 20px; margin-bottom: 16px;
+    box-shadow: 0 8px 22px rgba(0,0,0,.15);
+  }
+  .hero-label { font-size: 12px; opacity: .9; font-weight: 600; }
+  .hero-value { font-size: 30px; font-weight: 800; margin: 4px 0 4px; letter-spacing: .01em; }
+  .hero-sub { font-size: 12px; opacity: .95; }
+
+  .btn {
+    display: block; width: 100%; border: none; cursor: pointer;
+    background: var(--main); color: #fff; font-weight: 700; font-size: 15px;
+    padding: 13px; border-radius: var(--radius); font-family: inherit; margin-bottom: 16px;
+    box-shadow: 0 3px 10px rgba(0,0,0,.12);
+  }
+  /* テーマ別ボタン微調整 */
+  .t-navy .btn { background: var(--accent); color: #1a3a5c; font-weight: 800; letter-spacing: .05em; }
+  .t-warm .btn { border-radius: 999px; }
+  .t-modern .btn { box-shadow: none; }
+
+  .card {
+    background: var(--card); border-radius: var(--radius); padding: 14px 16px;
+    border: 1px solid rgba(0,0,0,.06); margin-bottom: 12px;
+  }
+  .t-navy .card { border-left: 4px solid var(--accent); }
+  .t-modern .card { border: 1px solid #e5e7eb; }
+  .card h3 {
+    margin: 0 0 10px; font-size: 14px; color: var(--text);
+    padding-left: 8px; border-left: 3px solid var(--main);
+  }
+  .t-zaim .card h3 { border-left: none; padding-left: 0; font-size: 13px; color: var(--sub); font-weight: 600; }
+  .row { display: flex; justify-content: space-between; align-items: center; font-size: 13px; padding: 5px 0; color: var(--text); }
+  .row b { font-size: 15px; }
+  .row.warn { color: #d9534f; font-weight: 700; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+  .chip { font-size: 11px; padding: 2px 9px; border-radius: 999px; background: var(--main); color: #fff; opacity: .85; }
+  .t-navy .chip { background: var(--accent); color: #1a3a5c; }
+  .t-modern .chip { background: #eff4ff; color: var(--main); }
+  .t-zaim .chip { background: #e6f3ea; color: var(--main); }
+  .note { font-size: 11px; color: var(--sub); margin-top: 6px; }
+</style>
+</head>
+<body>
+<h1>デザイン候補 5案</h1>
+<p class="intro">同じ中身を5つの配色で並べました。好きなものを選んでください（番号で教えてください）。</p>
+
+<div class="grid">
+
+  <!-- 1 やわらか水色 -->
+  <div class="sample t-water">
+    <div class="tag">① やわらか水色（今を磨く）</div>
+    <div class="demo">
+      <div class="hero">
+        <div class="hero-label">現在の総資産</div>
+        <div class="hero-value">¥12,340,000</div>
+        <div class="hero-sub">現金 340万 ・ 預金 600万 ・ 投資 294万</div>
+      </div>
+      <button class="btn">未来を試してみる →</button>
+      <div class="card">
+        <h3>人生キャッシュフロー</h3>
+        <div class="row"><span>2040年 総資産</span><b>¥3,820万</b></div>
+        <div class="row warn"><span>2061年 資産が底をつく</span><b>⚠</b></div>
+      </div>
+      <div class="card">
+        <h3>できること</h3>
+        <div class="chips"><span class="chip">住宅購入</span><span class="chip">教育費</span><span class="chip">FIRE</span></div>
+      </div>
+      <p class="note">親しみやすい・家族向け・やさしい印象</p>
+    </div>
+  </div>
+
+  <!-- 2 信頼の紺 -->
+  <div class="sample t-navy">
+    <div class="tag">② 信頼の紺（金融・FP風）</div>
+    <div class="demo">
+      <div class="hero">
+        <div class="hero-label">現在の総資産</div>
+        <div class="hero-value">¥12,340,000</div>
+        <div class="hero-sub">現金 340万 ・ 預金 600万 ・ 投資 294万</div>
+      </div>
+      <button class="btn">未来を試してみる →</button>
+      <div class="card">
+        <h3>人生キャッシュフロー</h3>
+        <div class="row"><span>2040年 総資産</span><b>¥3,820万</b></div>
+        <div class="row warn"><span>2061年 資産が底をつく</span><b>⚠</b></div>
+      </div>
+      <div class="card">
+        <h3>できること</h3>
+        <div class="chips"><span class="chip">住宅購入</span><span class="chip">教育費</span><span class="chip">FIRE</span></div>
+      </div>
+      <p class="note">きっちり・信頼感・大人っぽい</p>
+    </div>
+  </div>
+
+  <!-- 3 モダン白 -->
+  <div class="sample t-modern">
+    <div class="tag">③ モダン白（今風SaaS）</div>
+    <div class="demo">
+      <div class="hero">
+        <div class="hero-label">現在の総資産</div>
+        <div class="hero-value">¥12,340,000</div>
+        <div class="hero-sub">現金 340万 ・ 預金 600万 ・ 投資 294万</div>
+      </div>
+      <button class="btn">未来を試してみる →</button>
+      <div class="card">
+        <h3>人生キャッシュフロー</h3>
+        <div class="row"><span>2040年 総資産</span><b>¥3,820万</b></div>
+        <div class="row warn"><span>2061年 資産が底をつく</span><b>⚠</b></div>
+      </div>
+      <div class="card">
+        <h3>できること</h3>
+        <div class="chips"><span class="chip">住宅購入</span><span class="chip">教育費</span><span class="chip">FIRE</span></div>
+      </div>
+      <p class="note">スッキリ・余白多め・若い層向け</p>
+    </div>
+  </div>
+
+  <!-- 4 あたたか -->
+  <div class="sample t-warm">
+    <div class="tag">④ あたたか（親しみポップ）</div>
+    <div class="demo">
+      <div class="hero">
+        <div class="hero-label">現在の総資産</div>
+        <div class="hero-value">¥12,340,000</div>
+        <div class="hero-sub">現金 340万 ・ 預金 600万 ・ 投資 294万</div>
+      </div>
+      <button class="btn">未来を試してみる →</button>
+      <div class="card">
+        <h3>人生キャッシュフロー</h3>
+        <div class="row"><span>2040年 総資産</span><b>¥3,820万</b></div>
+        <div class="row warn"><span>2061年 資産が底をつく</span><b>⚠</b></div>
+      </div>
+      <div class="card">
+        <h3>できること</h3>
+        <div class="chips"><span class="chip">住宅購入</span><span class="chip">教育費</span><span class="chip">FIRE</span></div>
+      </div>
+      <p class="note">明るい・とっつきやすい・続けやすい</p>
+    </div>
+  </div>
+
+  <!-- 5 ZAIM風 -->
+  <div class="sample t-zaim">
+    <div class="tag">⑤ ZAIM風（緑・シンプル家計簿）</div>
+    <div class="demo">
+      <div class="hero">
+        <div class="hero-label">現在の総資産</div>
+        <div class="hero-value">¥12,340,000</div>
+        <div class="hero-sub">現金 340万 ・ 預金 600万 ・ 投資 294万</div>
+      </div>
+      <button class="btn">未来を試してみる →</button>
+      <div class="card">
+        <h3>人生キャッシュフロー</h3>
+        <div class="row"><span>2040年 総資産</span><b>¥3,820万</b></div>
+        <div class="row warn"><span>2061年 資産が底をつく</span><b>⚠</b></div>
+      </div>
+      <div class="card">
+        <h3>できること</h3>
+        <div class="chips"><span class="chip">住宅購入</span><span class="chip">教育費</span><span class="chip">FIRE</span></div>
+      </div>
+      <p class="note">シンプル・数字が主役・万人向け</p>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
