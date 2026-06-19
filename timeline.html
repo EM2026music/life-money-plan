@@ -5,20 +5,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
 <title>キャッシュフロー - デザイン４ライフ</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2338b6d3'/%3E%3Cpolyline points='10,44 24,32 36,38 54,16' fill='none' stroke='white' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231a3a5c'/%3E%3Cpolyline points='10,44 24,32 36,38 54,16' fill='none' stroke='white' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <script src="chart.umd.min.js"></script>
 <style>
   :root {
-    --bg: #eef7fb;
+    --bg: #eef1f5;
     --card-bg: #ffffff;
     --border: #d4e8f0;
     --text: #2c3a42;
     --text-light: #7c8d97;
-    --accent: #38b6d3;
-    --accent-line: #7ed3e8;
-    --section-bg: #e2f3fa;
+    --accent: #1a3a5c;
+    --accent-line: #c8a45c;
+    --section-bg: #e7ebf1;
     --neg: #d9534f;
-    --color-cash: #38b6d3;
+    --color-cash: #1a3a5c;
     --color-invest: #4caf7d;
     --color-total: #2c6b7a;
   }
@@ -27,7 +27,7 @@
   body {
     margin: 0;
     font-family: "Hiragino Sans", "Yu Gothic", "Segoe UI", system-ui, sans-serif;
-    background: linear-gradient(180deg, #f4fbfe 0%, var(--bg) 280px) fixed;
+    background: linear-gradient(180deg, #f6f8fa 0%, var(--bg) 280px) fixed;
     color: var(--text);
     padding: 24px;
   }
@@ -50,7 +50,7 @@
     height: 100vh;
     background: var(--card-bg);
     border-right: 3px solid var(--accent);
-    box-shadow: 2px 0 10px rgba(56,182,211,0.10);
+    box-shadow: 2px 0 10px rgba(26,58,92,0.10);
     padding: 22px 0;
     z-index: 100;
     overflow-y: auto;
@@ -69,7 +69,7 @@
     width: 22px;
     height: 22px;
     flex: 0 0 auto;
-    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2338b6d3'/%3E%3Cpolyline points='10,44 24,32 36,38 54,16' fill='none' stroke='white' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/contain no-repeat;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231a3a5c'/%3E%3Cpolyline points='10,44 24,32 36,38 54,16' fill='none' stroke='white' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/contain no-repeat;
   }
   .sidebar a {
     display: block;
@@ -511,7 +511,7 @@
     cursor: pointer;
     margin-top: 4px;
   }
-  .add-btn:hover { opacity: 0.95; box-shadow: 0 2px 8px rgba(56,182,211,0.30); }
+  .add-btn:hover { opacity: 0.95; box-shadow: 0 2px 8px rgba(26,58,92,0.30); }
   .category-group {
     border: 1px solid var(--border);
     border-radius: 8px;
@@ -3366,7 +3366,7 @@ function updateChart(years, cashArr, investArr, totalArr, depositArr) {
     pointRadius: 0, pointHoverRadius: 5, pointBackgroundColor: color, pointBorderColor: '#fff',
   }, opts || {});
   const datasets = [
-    mk('現金資産', cashYen, '#38b6d3'),
+    mk('現金資産', cashYen, '#1a3a5c'),
     mk('銀行預金', depositYen, '#f5a623'),
     mk('投資資産合計', investYen, '#4caf7d'),
     mk('総資産', totalYen, '#2c6b7a', { borderDash: [6, 4], fill: false, borderWidth: 2 }),
@@ -3438,7 +3438,7 @@ function updateSummary(years, cashArr, investArr, totalArr, firstYear) {
 }
 
 // 大項目ごとの色(ドーナツ・凡例で共通利用)
-const GROUP_PALETTE = ['#38b6d3','#4caf7d','#f5a623','#e2746b','#9b6dd6','#5b8def','#3fc1a3','#e289b8','#c0a35e','#7a8aa0','#d98be2','#6dc36d'];
+const GROUP_PALETTE = ['#1a3a5c','#4caf7d','#f5a623','#e2746b','#9b6dd6','#5b8def','#3fc1a3','#e289b8','#c0a35e','#7a8aa0','#d98be2','#6dc36d'];
 function paletteColor(i) { return GROUP_PALETTE[i % GROUP_PALETTE.length]; }
 
 let expenseDonut;
