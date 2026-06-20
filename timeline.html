@@ -294,26 +294,10 @@
     padding: 3px 8px;
     border-left: 4px solid var(--accent);
   }
-  /* セクションごとに帯の色を変える(淡すぎず濃すぎない中間の濃さ＋濃色の左ライン) */
-  tr.section-row[data-section-row="年齢"] td            { border-left-color:var(--accent); background:#ced5de; }
-  tr.section-row[data-section-row="収入（円/年）"] td     { border-left-color:#3f9468; background:#d6f0e3; }
-  tr.section-row[data-section-row="支出（円/年）"] td     { border-left-color:#d97a35; background:#fbe3cf; }
-  tr.section-row[data-section-row="保険（円/年）"] td     { border-left-color:#7456a0; background:#e8def2; }
-  tr.section-row[data-section-row="銀行預金（円）"] td    { border-left-color:#3a7ab0; background:#d7e8f7; }
-  tr.section-row[data-section-row="投資資産（円/年）"] td { border-left-color:#237a96; background:#d2eef2; }
-  tr.section-row[data-section-row="ライフイベント"] td   { border-left-color:#38b6d3; background:#cdf0f7; }
   /* 資産(まとめ)の帯は濃紺＋金ラインで結論として目立たせる */
   tr.section-row.section-summary td { background: var(--accent); color: #fff; border-left-color: var(--accent-line); }
   tr.section-row.section-summary .section-toggle-btn { color: var(--accent-line); }
   tr.section-row.section-summary .section-add-btn { background: var(--accent-line); color: var(--accent); }
-  /* 月次プランナーのセクション帯も年次と同じ色分けにする */
-  tr.section-row[data-msection="年齢"] td      { border-left-color:var(--accent); background:#ced5de; }
-  tr.section-row[data-msection="収入"] td      { border-left-color:#3f9468; background:#d6f0e3; }
-  tr.section-row[data-msection="支出"] td      { border-left-color:#d97a35; background:#fbe3cf; }
-  tr.section-row[data-msection="保険"] td      { border-left-color:#7456a0; background:#e8def2; }
-  tr.section-row[data-msection="銀行預金"] td   { border-left-color:#3a7ab0; background:#d7e8f7; }
-  tr.section-row[data-msection="投資資産"] td   { border-left-color:#237a96; background:#d2eef2; }
-  tr.section-row[data-msection="ライフイベント"] td { border-left-color:#38b6d3; background:#cdf0f7; }
   /* 総資産の行を強調 */
   tr[data-row-id="totalAssets"] td { font-weight: 800; background: #eaeff5; }
   tr[data-row-id="totalAssets"] td.row-label { color: var(--accent); }
