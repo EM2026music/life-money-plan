@@ -292,7 +292,15 @@
     font-weight: 700;
     text-align: left;
     padding: 3px 8px;
+    border-left: 4px solid var(--accent);
   }
+  /* 資産(まとめ)の帯は濃紺＋白で結論として目立たせる */
+  tr.section-row.section-summary td { background: var(--accent); color: #fff; border-left-color: var(--accent-line); }
+  tr.section-row.section-summary .section-toggle-btn { color: var(--accent-line); }
+  tr.section-row.section-summary .section-add-btn { background: var(--accent-line); color: var(--accent); }
+  /* 総資産の行を強調 */
+  tr[data-row-id="totalAssets"] td { font-weight: 800; background: #eaeff5; }
+  tr[data-row-id="totalAssets"] td.row-label { color: var(--accent); }
   tr.sec-hidden { display: none; }
   .section-toggle-btn {
     background: none;
@@ -2490,6 +2498,7 @@ function generateTable() {
       const collapsed = collapsedSections.has(row.section);
       const tr = document.createElement('tr');
       tr.className = 'section-row';
+      if (row.section === '資産（円）') tr.className += ' section-summary'; // まとめ=濃紺で強調
       tr.dataset.sectionRow = row.section;
       const td = document.createElement('td');
       td.colSpan = years.length + 1;
