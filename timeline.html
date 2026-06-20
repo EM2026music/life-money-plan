@@ -598,7 +598,13 @@
   .event-amount-input:focus { outline: 2px solid var(--accent); background: #fff; border-radius: 3px; color: var(--text); }
   /* イベント該当年のセル: 名前(上段)＋金額(下段)の2段 */
   .event-cell2 { display: flex; flex-direction: column; gap: 1px; align-items: stretch; }
-  .event-cell2-name { font-size: 10px; color: var(--accent); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; }
+  .event-cell2-name {
+    font-size: 10px; color: var(--accent); font-weight: 700;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    text-align: center; border: none; background: transparent;
+    width: 100%; padding: 0; font-family: inherit;
+  }
+  .event-cell2-name:focus { outline: 1px solid var(--accent); background: #fff; border-radius: 2px; }
   .section-add-btn {
     background: var(--accent);
     color: #fff;
@@ -2638,9 +2644,12 @@ function generateTable() {
         if (ev && ev.year === year) {
           const wrap = document.createElement('div');
           wrap.className = 'event-cell2';
-          const nameLine = document.createElement('div');
+          const nameLine = document.createElement('input');
+          nameLine.type = 'text';
           nameLine.className = 'event-cell2-name';
-          nameLine.textContent = ev.name;
+          nameLine.value = ev.name;
+          nameLine.title = `${ev.name}（${ev.year}年）の名称`;
+          nameLine.addEventListener('change', e => renameEventInline(ev.id, e.target.value));
           const input = document.createElement('input');
           input.className = 'cell-input';
           input.type = 'text';

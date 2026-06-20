@@ -140,6 +140,19 @@
     font-weight: 400;
   }
   .collapsible-body.collapsed-section { display: none; }
+  h2.fixed-cost-header { display: flex; align-items: center; justify-content: space-between; }
+  .copy-prev-btn {
+    border: 1px solid var(--accent);
+    background: #fff;
+    color: var(--accent);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .copy-prev-btn:hover { background: var(--section-bg); }
   .month-nav {
     display: flex;
     align-items: center;
@@ -492,7 +505,7 @@
   </div>
 
   <div class="card">
-    <h2>固定費(円)</h2>
+    <h2 class="fixed-cost-header">固定費(円) <button type="button" class="copy-prev-btn" id="copyPrevMonthBtn">前月をコピー</button></h2>
     <div class="fixed-grid" id="fixedGrid"></div>
     <div class="result-line">固定費合計：<span id="fixedTotal">0</span> 円</div>
   </div>
@@ -692,6 +705,23 @@ function formatMonthLabel(month) {
   return `${y}年${parseInt(m)}月`;
 }
 
+function copyPrevMonthFixedCosts() {
+  const [y, m] = currentMonth.split('-').map(Number);
+  const d = new Date(y, m - 2, 1);
+  const prevMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  const prevData = data.months[prevMonth];
+  if (!prevData || !prevData.fixedCosts || !Object.keys(prevData.fixedCosts).length) {
+    alert(`${formatMonthLabel(prevMonth)}の固定費データがありません。`);
+    return;
+  }
+  if (!confirm(`${formatMonthLabel(prevMonth)}の固定費を${formatMonthLabel(currentMonth)}にコピーします。\n現在の固定費は上書きされます。よろしいですか？`)) return;
+  const month = getMonthData(currentMonth);
+  month.fixedCosts = { ...prevData.fixedCosts };
+  saveData();
+  renderFixedCosts();
+  updateSummary();
+}
+
 function shiftMonth(delta) {
   const [y, m] = currentMonth.split('-').map(Number);
   const d = new Date(y, m - 1 + delta, 1);
@@ -729,7 +759,7 @@ function todayStr() {
 // 空の取引行(日付は今日)
 function emptyTx() {
   const firstCategory = categoryStore.categories[0] ? categoryStore.categories[0].name : '';
-  return { date: todayStr(), who: getWhoOptions()[0] || '共通', where: '', amount: 0, what: '', category: firstCategory };
+  return { date: todayStr(), who: getWhoOptions()[0] || '共通', where: '', amount: null, what: '', category: firstCategory };
 }
 
 function renderTransactions() {
@@ -764,9 +794,10 @@ function renderTransactions() {
     const amountTd = document.createElement('td');
     const amountInput = document.createElement('input');
     amountInput.type = 'number';
-    amountInput.value = t.amount || 0;
+    amountInput.placeholder = '未定でも可';
+    amountInput.value = (t.amount === null || t.amount === undefined) ? '' : t.amount;
     amountInput.addEventListener('input', () => {
-      t.amount = parseFloat(amountInput.value) || 0;
+      t.amount = amountInput.value === '' ? null : (parseFloat(amountInput.value) || 0);
       saveData();
       updateSummary();
     });
@@ -1281,6 +1312,7 @@ function render() {
 document.getElementById('prevMonth').addEventListener('click', () => shiftMonth(-1));
 document.getElementById('nextMonth').addEventListener('click', () => shiftMonth(1));
 document.getElementById('addTransaction').addEventListener('click', addTransaction);
+document.getElementById('copyPrevMonthBtn').addEventListener('click', copyPrevMonthFixedCosts);
 
 render();
 
