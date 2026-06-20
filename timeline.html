@@ -587,6 +587,9 @@
   }
   .event-amount-input::placeholder { color: var(--text-light); opacity: .5; }
   .event-amount-input:focus { outline: 2px solid var(--accent); background: #fff; border-radius: 3px; color: var(--text); }
+  /* イベント該当年のセル: 名前(上段)＋金額(下段)の2段 */
+  .event-cell2 { display: flex; flex-direction: column; gap: 1px; align-items: stretch; }
+  .event-cell2-name { font-size: 10px; color: var(--accent); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; }
   .section-add-btn {
     background: var(--accent);
     color: #fff;
@@ -2620,9 +2623,14 @@ function generateTable() {
         td.dataset.rowId = row.id;
         td.dataset.year = year;
       } else if (row.type === 'eventrow') {
-        // イベントは該当年(ev.year)の列だけ金額入力。他の年は「·」。
+        // イベントは該当年(ev.year)の列に「イベント名(上段)＋金額(下段)」の2段で表示。他の年は「·」。
         const ev = data.lifeEvents.find(e => e.id === row.eventId);
         if (ev && ev.year === year) {
+          const wrap = document.createElement('div');
+          wrap.className = 'event-cell2';
+          const nameLine = document.createElement('div');
+          nameLine.className = 'event-cell2-name';
+          nameLine.textContent = ev.name;
           const input = document.createElement('input');
           input.className = 'cell-input';
           input.type = 'text';
@@ -2631,7 +2639,9 @@ function generateTable() {
           input.title = `${ev.name}（${ev.year}年）の金額`;
           attachMoneyInputFormat(input);
           input.addEventListener('input', e => onEventRowAmount(ev.id, e.target.value));
-          td.appendChild(input);
+          wrap.appendChild(nameLine);
+          wrap.appendChild(input);
+          td.appendChild(wrap);
         } else {
           td.style.color = 'var(--text-light)';
           td.style.textAlign = 'center';
