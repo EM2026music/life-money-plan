@@ -405,6 +405,12 @@
     <a href="kakeibo.html">📒 家計簿<span>日々の支出・固定費を記録</span></a>
     </div>
   </div>
+
+  <div class="card">
+    <h2>はじめての方へ</h2>
+    <p class="note">使い方のイメージを掴みたい方は、サンプルデータ（年収620万・住宅購入・NISAなどの例）を入れて試せます。<strong>今入力したデータは上書きされます。</strong></p>
+    <button class="add-btn" id="loadSampleBtn">サンプルを入れて試す</button>
+  </div>
 </div>
 
 <script>
@@ -432,6 +438,53 @@ function defaultData() {
     insurances: [],
     monthlyCells: {},
     pension: { dad: { startAge: 65, amount: 0 }, mom: { startAge: 65, amount: 0 } },
+  };
+}
+
+// サンプルデータ(初めての人が雰囲気を掴む用)。年収620万・住宅購入・NISAなどの例。
+function sampleData() {
+  return {
+    startYear: 2026, numYears: 35,
+    initialAssets: 20,
+    banks: [{ id: 'bank1', name: '〇〇銀行', initialBalance: 200 }],
+    births: { birthDad: null, birthMom: null, birthChild1: null, birthChild2: null },
+    family: [
+      { id: 'dad', name: 'パパ', type: 'adult', birth: 1988 },
+      { id: 'mom', name: 'ママ', type: 'adult', birth: 1990 },
+      { id: 'child1', name: '長男', type: 'child', birth: 2018 },
+    ],
+    incomeItems: [
+      { id: 'incomeDad', name: 'パパ収入' },
+      { id: 'incomeMom', name: 'ママ収入' },
+      { id: 'incomeOther', name: 'その他収入' },
+      { id: 'incomePension', name: '年金' },
+      { id: 'incomeInsurance', name: '保険受取' },
+    ],
+    cells: {
+      incomeDad: { 2026: 500 },
+      incomeMom: { 2026: 120 },
+      cat_rent: { 2026: 108 },
+      cat_groceries: { 2026: 60 },
+      cat_dining_out: { 2026: 24 },
+      cat_daily: { 2026: 24 },
+      cat_electricity: { 2026: 14 },
+      cat_telecom: { 2026: 12 },
+      bank_bank1_dep: { 2026: 60 },
+      inv_nisa_contrib: { 2026: 24 },
+    },
+    monthlyCells: {},
+    investments: [{ id: 'nisa', name: 'NISA', rate: 5, initialBalance: 100 }],
+    lifeEvents: [
+      { id: 'ev_house', name: '住宅購入', year: 2032, amount: 3000 },
+      { id: 'ev_car', name: '車買い替え', year: 2035, amount: 200 },
+    ],
+    insurances: [],
+    pension: { dad: { startAge: 65, amount: 0 }, mom: { startAge: 65, amount: 0 } },
+    defaultItemsCreated: true,
+    migratedBankInitbal: true,
+    migratedRemoveDupCats: true,
+    migratedExpenseCategories: true,
+    migratedIncomePensionPayout: true,
   };
 }
 
@@ -539,6 +592,18 @@ function renderHero() {
 initBasicInfo();
 renderFamily();
 renderHero();
+
+// サンプルデータ投入(確認ダイアログ付き・既存データは確認後に上書き)
+{
+  const sb = document.getElementById('loadSampleBtn');
+  if (sb) sb.addEventListener('click', () => {
+    if (!confirm('サンプルデータを入れます。\n今入力したデータは上書きされます。よろしいですか？')) return;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(sampleData()));
+    localStorage.removeItem('lifeMoneyCategoriesV1'); // 分類はデフォルトを再生成
+    localStorage.removeItem('lifeMoneyKakeiboV1');
+    location.reload();
+  });
+}
 
 // --- バックアップのおすすめ(自動ナッジ) ---
 // アプリは入力のたびにブラウザへ自動保存されますが、ブラウザのデータを消すと失われます。
