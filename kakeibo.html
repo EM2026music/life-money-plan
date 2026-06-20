@@ -156,7 +156,8 @@
     font-family: inherit;
   }
   .month-nav button:hover { background: var(--section-bg); }
-  .month-label { font-size: 20px; font-weight: 700; min-width: 140px; text-align: center; color: #fff; background: var(--accent); padding: 6px 18px; border-radius: 8px; }
+  .month-label { font-size: 20px; font-weight: 700; min-width: 140px; text-align: center; color: var(--accent); background: #fff; padding: 6px 18px; border-radius: 8px; }
+  .month-nav-card { background: var(--accent); }
 
   .fixed-grid {
     display: grid;
@@ -460,7 +461,7 @@
   <h1>家計簿</h1>
   <p class="subtitle">月ごとの支出記録と固定費を管理します</p>
 
-  <div class="card">
+  <div class="card month-nav-card">
     <div class="month-nav">
       <button id="prevMonth">‹ 前月</button>
       <span class="month-label" id="monthLabel"></span>
