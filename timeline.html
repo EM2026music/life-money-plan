@@ -3116,7 +3116,8 @@ function onBaseCellInput(e) {
   const prevCells = block ? JSON.parse(JSON.stringify(data.cells[rowId] || {})) : null;
   const prevMonthly = block ? JSON.parse(JSON.stringify(data.monthlyCells[rowId] || {})) : null;
   const monthly = parseYenInput(e.target.value);
-  // 基準額は月額入力。年間ベース値は月額×12として保存し、その年の月別上書きをリセット。
+  // 基準額(毎月の目安)。年間ベース値=月額×12で保存。手動で変更した月(override)はそのまま、
+  // 何も入れてない月にだけこの基準額が反映される(getMonthlyEffectiveValueがoverride優先)。
   setCellValue(rowId, year, monthly * 12);
   saveData();
   recalcAll();
@@ -3137,20 +3138,10 @@ function onMonthlyCellInput(e) {
   const prevCells = block ? JSON.parse(JSON.stringify(data.cells[rowId] || {})) : null;
   const prevMonthly = block ? JSON.parse(JSON.stringify(data.monthlyCells[rowId] || {})) : null;
   const value = parseYenInput(e.target.value);
-  // 編集していない月を「いまの値」で固定してから、編集値を反映。
-  for (let m = 1; m <= 12; m++) {
-    if (m === month) continue;
-    if (getMonthlyOverride(rowId, year, m) === undefined) {
-      setMonthlyOverride(rowId, year, m, getMonthlyEffectiveValue(rowId, year, m));
-    }
-  }
+  // 編集した月「だけ」を上書き(override)する。他の月は基準額のまま=基準額は変動させない。
+  // (基準額=毎月だいたいこれくらい。変動する月だけここで手動変更する)
   setMonthlyOverride(rowId, year, month, value);
   e.target.classList.remove('inherited');
-  // 月をいじったら年次もその年の12ヶ月合計に自動更新する。
-  let sum = 0;
-  for (let m = 1; m <= 12; m++) sum += getMonthlyOverride(rowId, year, m) || 0;
-  if (!data.cells[rowId]) data.cells[rowId] = {};
-  data.cells[rowId][year] = sum;
   saveData();
   recalcAll();
   if (block && cashNegativeAt(year)) {
