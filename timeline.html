@@ -294,6 +294,14 @@
     padding: 3px 8px;
     border-left: 4px solid var(--accent);
   }
+  /* セクションごとに帯の色を変える(左ライン＋淡い背景。紺基調を保ちつつメリハリ) */
+  tr.section-row[data-section-row="年齢"] td            { border-left-color:#6b7a8c; background:#eef1f5; }
+  tr.section-row[data-section-row="収入（円/年）"] td     { border-left-color:#4caf7d; background:#eef6f1; }
+  tr.section-row[data-section-row="支出（円/年）"] td     { border-left-color:#e08a4c; background:#f9f2ea; }
+  tr.section-row[data-section-row="保険（円/年）"] td     { border-left-color:#8a6db5; background:#f2eef7; }
+  tr.section-row[data-section-row="銀行預金（円）"] td    { border-left-color:#4a90c8; background:#eaf1f8; }
+  tr.section-row[data-section-row="投資資産（円/年）"] td { border-left-color:#2c8fae; background:#e8f2f5; }
+  tr.section-row[data-section-row="ライフイベント"] td   { border-left-color:#c8a45c; background:#f7f2e8; }
   /* 資産(まとめ)の帯は濃紺＋白で結論として目立たせる */
   tr.section-row.section-summary td { background: var(--accent); color: #fff; border-left-color: var(--accent-line); }
   tr.section-row.section-summary .section-toggle-btn { color: var(--accent-line); }
