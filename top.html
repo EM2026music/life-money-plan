@@ -516,8 +516,6 @@ let data = loadData();
 // 内部は万円で保持、現金資産の表示・入力は円(カンマ区切り)。
 function toYen(man) { return Math.round((man || 0) * 10000); }
 function fromYen(yen) { return (yen || 0) / 10000; }
-function formatInputYen(man) { return toYen(man).toLocaleString(); }
-function parseYenInput(str) { return fromYen(parseFloat(String(str).replace(/[^0-9.\-]/g, '')) || 0); }
 
 function initBasicInfo() {
   document.getElementById('startYear').value = data.startYear;

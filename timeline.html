@@ -803,7 +803,7 @@
   </div>
 
   <div class="card">
-    <h2 class="collapsible-header" data-collapse-target="insuranceSettingsBody">保険の設定（受取） <span class="section-toggle">▶</span></h2>
+    <h2 class="collapsible-header" data-collapse-target="insuranceSettingsBody">保険の設定 <span class="section-toggle">▶</span></h2>
     <div id="insuranceSettingsBody" class="collapsible-body collapsed-section">
       <div id="insuranceList"></div>
       <button class="add-btn" id="addInsuranceBtn">+ 保険を追加</button>
@@ -1203,11 +1203,6 @@ function insurancePremiumTotal(year) {
   return data.insurances.reduce((s, ins) => s + getYearlyEffectiveValue(`ins_${ins.id}_premium`, year), 0);
 }
 
-// その年の保険受取（学資保険など）合計（万円）。
-function insurancePayoutTotal(year) {
-  return data.insurances.reduce((s, ins) => s + (ins.payoutYear === year ? (ins.payoutAmount || 0) : 0), 0);
-}
-
 // 学年判定用の「年度年齢」。日本の学年は4月2日が区切り(4/2〜翌4/1生まれが同学年)なので、
 // 生まれ月が1〜3月の場合は、同じ生まれ年でも4〜12月生まれの子より学年が1つ上になる。
 // 生まれ月が分かっていればそれで正確に判定し、分からなければ簡易の年齢(year-birth)をそのまま使う(目安)。
@@ -1228,28 +1223,9 @@ function schoolGrade(age) {
   return '';
 }
 
-// その年の年金合計（万円）。パパ・ママそれぞれ、生年から計算した年齢が受給開始年齢以上なら年額を加算。
-function pensionForYear(year) {
-  const p = data.pension || {};
-  let total = 0;
-  [['dad', 'birthDad'], ['mom', 'birthMom']].forEach(([key, birthKey]) => {
-    const cfg = p[key];
-    const birth = data.births[birthKey];
-    if (cfg && birth && (cfg.amount || 0) > 0 && (year - birth) >= cfg.startAge) {
-      total += cfg.amount;
-    }
-  });
-  return total;
-}
-
 // その年のライフイベント費の合計（万円）。
 function lifeEventCost(year) {
   return data.lifeEvents.reduce((s, ev) => s + (ev.year === year ? (ev.amount || 0) : 0), 0);
-}
-
-// その年のライフイベント名（複数あれば「・」で連結）。
-function lifeEventNames(year) {
-  return data.lifeEvents.filter(ev => ev.year === year).map(ev => ev.name).join('・');
 }
 
 function buildInvestmentRows() {
@@ -1456,10 +1432,6 @@ function getYearlyEffectiveValue(rowId, year) {
   let sum = 0;
   for (let m = 1; m <= 12; m++) sum += getMonthlyEffectiveValue(rowId, year, m);
   return sum;
-}
-
-function roundMoney(v) {
-  return Math.round(v * 10) / 10;
 }
 
 // 内部データは万円で保持するが、画面の表示・入力はすべて円で扱う。
@@ -1927,44 +1899,6 @@ function renderIncomeSettings() {
 }
 
 document.getElementById('addIncomeItemBtn').addEventListener('click', addIncomeItem);
-
-// --- 年金の設定 ---
-function renderPensionSettings() {
-  const container = document.getElementById('pensionList');
-  if (!container) return;
-  container.innerHTML = '';
-  const people = [
-    { key: 'dad', label: 'パパ', birthKey: 'birthDad' },
-    { key: 'mom', label: 'ママ', birthKey: 'birthMom' },
-  ];
-  people.forEach(person => {
-    const cfg = data.pension[person.key];
-    const birth = data.births[person.birthKey];
-    const startYear = birth ? (birth + cfg.startAge) : null;
-    const row = document.createElement('div');
-    row.className = 'investment-row';
-    row.innerHTML = `
-      <span class="inv-name" style="border:none;background:none;font-weight:700;">${person.label}</span>
-      <label>受給開始年齢<input type="number" class="pension-field" value="${cfg.startAge}" data-person="${person.key}" data-field="startAge"></label>
-      <label>年額(円)<input type="number" class="pension-field" value="${toYen(cfg.amount)}" data-person="${person.key}" data-field="amount"></label>
-      <span class="empty-note" style="margin:0;">${startYear ? `${startYear}年〜` : '生年未設定'}</span>
-    `;
-    container.appendChild(row);
-  });
-
-  container.querySelectorAll('.pension-field').forEach(el => {
-    el.addEventListener('input', e => {
-      const cfg = data.pension[e.target.dataset.person];
-      const field = e.target.dataset.field;
-      if (field === 'startAge') cfg.startAge = parseInt(e.target.value) || 0;
-      else if (field === 'amount') cfg.amount = fromYen(parseFloat(e.target.value) || 0);
-      saveData();
-      renderPensionSettings();
-      recalcAll();
-    });
-    if (el.type === 'number') el.addEventListener('wheel', () => el.blur());
-  });
-}
 
 // --- 分類を初期状態に戻す(金額データは保持) ---
 document.getElementById('resetCategoriesBtn').addEventListener('click', () => {
@@ -3887,7 +3821,6 @@ renderCategorySettings();
 renderInvestmentSettings();
 renderLifeEventSettings();
 renderInsuranceSettings();
-renderPensionSettings();
 generateTable();
 generateMonthlyTable();
 applyTimelineView();
