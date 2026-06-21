@@ -1403,16 +1403,6 @@ function getValuationOverrideWithMonth(invId, year) {
   return (v !== undefined && v !== null && v !== '') ? { value: v, month: null } : null;
 }
 
-// 銀行預金の「評価額(実額)」: 取り崩しなどで残高を実額に上書きしたいとき用。
-// 月別入力があれば最新月を優先、無ければ年次セル。無ければnull(=通常の残高計算)。
-function getBankValuationOverride(bankId, year) {
-  const id = `bank_${bankId}_value`;
-  const latest = latestMonthlyValue(id, year);
-  if (latest !== null) return latest;
-  const v = data.cells[id] && data.cells[id][year];
-  return (v !== undefined && v !== null && v !== '') ? v : null;
-}
-
 // 指定年より後ろの明示値・月別上書きをすべて削除する（編集年以降をフォワードフィルに委ねる）。
 function clearCellsAfter(rowId, year) {
   getYears().forEach(y => {
@@ -3496,7 +3486,9 @@ function recalcMonthlyTable() {
     runningVal[inv.id] = hasBaseCell ? baseCell : fallback;
     flatBasis[inv.id] = hasBaseCell;
     const rate = getYearlyEffectiveValue(`inv_${inv.id}_rate`, year);
-    monthlyRate[inv.id] = Math.pow(1 + rate / 100, 1 / 12) - 1; // 年率を「12回かけると年率になる」月利に変換
+    // 年率が-100%以下(極端な誤入力等)だとMath.pow(負の数, 1/12)がNaNになるため、その場合は-1(全損)に固定する。
+    const yearMultiplier = 1 + rate / 100;
+    monthlyRate[inv.id] = yearMultiplier > 0 ? Math.pow(yearMultiplier, 1 / 12) - 1 : -1; // 年率を「12回かけると年率になる」月利に変換
     // 基準額(今年の評価額)セルの表示も最新化(年次タイムラインの評価額と同じ値)。
     const baseInput = document.querySelector(`#monthlyBody input[data-inv-value-base="${inv.id}"]`);
     if (baseInput && baseInput !== document.activeElement) {
@@ -3590,7 +3582,9 @@ function recalcAll() {
           // 何月の実額か分かっている(月次プランナーで入力): その月から年末までを、
           // 月次プランナーと同じ計算(年率を月割りした複利＋積立額)で伸ばして年末の残高にする。
           // (年次のこの年の残高と、月次の12月のセルが食い違わないようにするため)
-          const monthlyRate = Math.pow(1 + rate / 100, 1 / 12) - 1;
+          // 年率が-100%以下(極端な誤入力等)だとMath.pow(負の数, 1/12)がNaNになるため、その場合は-1(全損)に固定する。
+          const yearMultiplier = 1 + rate / 100;
+          const monthlyRate = yearMultiplier > 0 ? Math.pow(yearMultiplier, 1 / 12) - 1 : -1;
           let v = ov.value;
           for (let mm = ov.month + 1; mm <= 12; mm++) {
             v = v * (1 + monthlyRate) + getMonthlyEffectiveValue(contribId, year, mm);
