@@ -2844,23 +2844,6 @@ function onMonthlyValuationInput(e) {
   }
 }
 
-// 月次プランナーの「評価額(実額)」基準額(年初の額)の入力。年次タイムラインの評価額(実額)と同じ値(年単位)を保存。
-// 月別に何も入れていない月は、ここからの自動計算(積立＋利率)で表示される。
-function onBaseValuationInput(e) {
-  const invId = e.target.dataset.invValueBase;
-  const year = data.monthlySelectedYear;
-  const id = `inv_${invId}_value`;
-  if (!data.cells[id]) data.cells[id] = {};
-  const raw = e.target.value.trim();
-  if (raw === '') {
-    delete data.cells[id][year];
-  } else {
-    data.cells[id][year] = parseYenInput(e.target.value);
-  }
-  saveData();
-  recalcAll();
-}
-
 // 月次プランナーの「年率(%)」基準額の入力。年次タイムラインの年率(%)と同じセルを更新する(年単位の値)。
 function onMonthlyRateBaseInput(e) {
   const invId = e.target.dataset.invRateBase;
@@ -3076,42 +3059,10 @@ function generateMonthlyTable() {
       });
       labelTd.appendChild(resetBtn);
       tr.appendChild(labelTd);
+      // 「基準額(月額)」列は月額の概念だが、年初保有評価額は「年初時点の額」であり月額ではないため、
+      // ここには入力欄を置かない(年次タイムラインの「年初保有評価額」で設定する)。空欄のセルにする。
       const baseTd = document.createElement('td');
       baseTd.className = 'base-cell';
-      const baseInput = document.createElement('input');
-      baseInput.className = 'cell-input base-input';
-      baseInput.type = 'text';
-      baseInput.dataset.invValueBase = row.invId;
-      const monthlyValueId = `inv_${row.invId}_value`;
-      const baseLocked = hasMonthlyOverrides(monthlyValueId, year);
-      if (baseLocked) {
-        // 月別に1つでも月末評価額が入っていると、年末まで自動的に伸ばす計算が優先されるため、
-        // ここを編集しても反映されない。混乱を防ぐため編集不可にし、理由を説明する。
-        baseInput.disabled = true;
-        baseInput.placeholder = '月別優先中';
-        baseInput.value = '';
-        baseInput.title = '【この年は月別の「月末評価額」が優先されています】\n'
-          + 'すでに月別の欄に実際の評価額を入力済みのため、ここは編集できません(入力しても反映されません)。\n'
-          + '基準額を変更したい場合は、まず下の「↺」ボタンでこの年の月別評価額をすべて消してから入力してください。';
-      } else {
-        baseInput.placeholder = '年初保有評価額';
-        const yv = data.cells[monthlyValueId] && data.cells[monthlyValueId][year];
-        baseInput.value = (yv !== undefined && yv !== null && yv !== '') ? formatInputYen(yv) : '';
-        baseInput.title = '【基準額(年初保有評価額)とは】年次タイムラインの「年初保有評価額」と同じ値です(どちらかに入れればもう片方にも反映されます)。\n'
-          + '・「年初(1月)時点でこれくらい」という額を入れる欄です。入れると、そこから年率・積立額で自動的に増やして、月別に何も入力していない月の見込み額を表示します。\n'
-          + '・実際にその月の本当の額が分かったら、下の月別の欄にその月の月末評価額を入れてください。その月の額が優先され、その月から先はそこからまた増やして計算します。\n'
-          + '・空欄に戻すと、積立額・年率からの自動計算に戻ります。';
-      }
-      attachValuationInputFormat(baseInput);
-      baseInput.addEventListener('input', onBaseValuationInput);
-      baseTd.appendChild(baseInput);
-      // 列見出しは「基準額(月額)」だが、このセルは月額ではなく「年初(1月)時点の額」なので、
-      // 紛らわしくないよう小さく注記する。
-      const baseNote = document.createElement('div');
-      baseNote.className = 'rate-cell2-sub';
-      baseNote.textContent = '※年初時点(年額)';
-      baseNote.title = baseInput.title;
-      baseTd.appendChild(baseNote);
       tr.appendChild(baseTd);
       for (let m = 1; m <= 12; m++) {
         const td = document.createElement('td');
@@ -3454,11 +3405,6 @@ function recalcMonthlyTable() {
     // 年率が-100%以下(極端な誤入力等)だとMath.pow(負の数, 1/12)がNaNになるため、その場合は-1(全損)に固定する。
     const yearMultiplier = 1 + rate / 100;
     monthlyRate[inv.id] = yearMultiplier > 0 ? Math.pow(yearMultiplier, 1 / 12) - 1 : -1; // 年率を「12回かけると年率になる」月利に変換
-    // 基準額(年初保有評価額)セルの表示も最新化(年次タイムラインの年初保有評価額と同じ値)。
-    const baseInput = document.querySelector(`#monthlyBody input[data-inv-value-base="${inv.id}"]`);
-    if (baseInput && baseInput !== document.activeElement) {
-      baseInput.value = hasBaseCell ? formatInputYen(baseCell) : '';
-    }
   });
   for (let m = 1; m <= 12; m++) {
     let invSum = 0;
