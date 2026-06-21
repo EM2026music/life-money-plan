@@ -572,7 +572,14 @@ document.getElementById('addFamilyBtn').addEventListener('click', () => {
 function renderHero() {
   const cash = toYen(data.initialAssets || 0);
   const deposit = (data.banks || []).reduce((s, b) => s + toYen(b.initialBalance || 0), 0);
-  const invest = (data.investments || []).reduce((s, inv) => s + toYen(inv.initialBalance || 0), 0);
+  // 投資は、開始年に「評価額(実額)」が入っていればそれを優先(年次タイムラインと一致させる)。
+  const startYear = data.startYear;
+  const invest = (data.investments || []).reduce((s, inv) => {
+    const vcell = data.cells && data.cells['inv_' + inv.id + '_value'];
+    const ov = vcell ? vcell[startYear] : undefined;
+    const val = (ov !== undefined && ov !== null && ov !== '') ? ov : (inv.initialBalance || 0);
+    return s + toYen(val);
+  }, 0);
   const total = cash + deposit + invest;
   document.getElementById('heroTotal').textContent = '¥' + total.toLocaleString();
   document.getElementById('heroSub').textContent = `現金 ¥${cash.toLocaleString()} ・ 預金 ¥${deposit.toLocaleString()} ・ 投資 ¥${invest.toLocaleString()}`;

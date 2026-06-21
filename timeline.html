@@ -1254,6 +1254,7 @@ function buildInvestmentRows() {
     rows.push({ id: `inv_${inv.id}_contrib`, label: '積立額', type: 'editable', default: 0, forwardFill: 'full', invId: inv.id });
     rows.push({ id: `inv_${inv.id}_rate`, label: '年率(%)', type: 'editable', default: inv.rate, forwardFill: 'full', invId: inv.id, isRate: true });
     rows.push({ id: `inv_${inv.id}_balance`, label: '残高', type: 'computed', invId: inv.id });
+    rows.push({ id: `inv_${inv.id}_value`, label: '評価額(実額)', type: 'valuation', invId: inv.id });
   });
   return rows;
 }
@@ -1358,6 +1359,14 @@ function setCellValue(rowId, year, value) {
   if (!data.cells[rowId]) data.cells[rowId] = {};
   data.cells[rowId][year] = value;
   clearMonthlyOverrides(rowId, year);
+}
+
+// 投資の「評価額(実額)」: その年に実際の評価額が入っていれば返す(無ければnull)。
+// フォワードフィルしない=入れた年だけ有効。移し替え(定期→NISA等)や相場込みの"今いくら"を表す。
+function getValuationOverride(invId, year) {
+  const id = `inv_${invId}_value`;
+  const v = data.cells[id] && data.cells[id][year];
+  return (v !== undefined && v !== null && v !== '') ? v : null;
 }
 
 // 指定年より後ろの明示値・月別上書きをすべて削除する（編集年以降をフォワードフィルに委ねる）。
@@ -2310,7 +2319,7 @@ function deleteInvestmentInline(id) {
   if (!inv) return;
   if (!confirm(`投資「${inv.name}」を削除します。よろしいですか?\n(この投資に入力した金額も削除されます)`)) return;
   data.investments = data.investments.filter(x => x.id !== id);
-  ['inv_' + id + '_contrib', 'inv_' + id + '_balance'].forEach(rid => {
+  ['inv_' + id + '_contrib', 'inv_' + id + '_balance', 'inv_' + id + '_rate', 'inv_' + id + '_value'].forEach(rid => {
     delete data.cells[rid];
     delete data.monthlyCells[rid];
   });
@@ -2684,6 +2693,21 @@ function generateTable() {
           td.style.textAlign = 'center';
           td.textContent = '—';
         }
+      } else if (row.type === 'valuation') {
+        // 評価額(実額): その年に実際の評価額を入れると、残高をその額に上書きする。
+        // 移し替え(定期→NISA等)・相場の増減を含む"今いくら"をそのまま反映。現金からは引かない。空欄なら自動計算。
+        const input = document.createElement('input');
+        input.className = 'cell-input';
+        input.type = 'text';
+        input.dataset.invValue = row.invId;
+        input.dataset.year = year;
+        input.placeholder = '実額';
+        const ov = getValuationOverride(row.invId, year);
+        input.value = ov !== null ? formatInputYen(ov) : '';
+        input.title = 'その時点の実際の評価額。入れるとその年の残高をこの額に上書きします（定期→NISA等の移し替えや相場込みの“今いくら”を反映）。空欄なら自動計算。';
+        attachMoneyInputFormat(input);
+        input.addEventListener('input', onValuationInput);
+        td.appendChild(input);
       } else if (row.type === 'bankbalance') {
         // 残高: 開始年は今ある額を手入力。2年目以降は前年残高＋年間貯金額で自動計算。
         if (year === years[0]) {
@@ -2823,6 +2847,23 @@ function onInitBalInput(e) {
   saveData();
   const setInput = document.querySelector(`.inv-balance[data-id="${invId}"]`);
   if (setInput && setInput !== document.activeElement) setInput.value = toYen(inv.initialBalance);
+  recalcAll();
+}
+
+// 投資の「評価額(実額)」セルの入力。その年に実際の評価額を保存(万円)。
+// 空欄に戻すとオーバーライド解除＝自動計算に戻る。現金チェックはしない(移し替え・相場込みのため)。
+function onValuationInput(e) {
+  const invId = e.target.dataset.invValue;
+  const year = parseInt(e.target.dataset.year);
+  const id = `inv_${invId}_value`;
+  if (!data.cells[id]) data.cells[id] = {};
+  const raw = e.target.value.trim();
+  if (raw === '') {
+    delete data.cells[id][year];
+  } else {
+    data.cells[id][year] = parseYenInput(e.target.value);
+  }
+  saveData();
   recalcAll();
 }
 
@@ -3300,10 +3341,18 @@ function recalcAll() {
     data.investments.forEach(inv => {
       const contribId = `inv_${inv.id}_contrib`;
       const balanceId = `inv_${inv.id}_balance`;
+      const override = getValuationOverride(inv.id, year);
       const contrib = getYearlyEffectiveValue(contribId, year);
-      investTotal += contrib;
       const rate = getYearlyEffectiveValue(`inv_${inv.id}_rate`, year);
-      const newBalance = prevBalances[inv.id] * (1 + rate / 100) + contrib;
+      let newBalance;
+      if (override !== null) {
+        // 実額を入れた年はその額をそのまま採用。移し替え(定期→NISA等)や相場込みの
+        // "今いくら"なので、手元現金からは引かない(investTotalに加えない)。
+        newBalance = override;
+      } else {
+        newBalance = prevBalances[inv.id] * (1 + rate / 100) + contrib;
+        investTotal += contrib; // この年に現金から投資へ移した分(現金から差し引く)
+      }
       prevBalances[inv.id] = newBalance;
       investAssetsTotal += newBalance;
       setComputedCell(balanceId, year, newBalance);
