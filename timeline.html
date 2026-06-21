@@ -3384,25 +3384,31 @@ function recalcMonthlyTable() {
   }
 
   // 「今いくら」用: 月ごとの 投資評価額合計 と 総資産(実額)。
-  // 投資は、その月に評価額を入れていればその額、入れてない月は直近で入れた月を持ち越す
-  // (まだ一度も入れてなければその年の計算残高)。現金・預金はその年の値(月内では一定)。
+  // 評価額(実額)を入れた月はその額をそのまま採用(実際の値なので最優先)。
+  // 評価額を入れてない月は、直近の実額(または前年末/初期額)に、年率を月割りした複利＋積立額を積み上げて表示する
+  // (積立額を入れても画面が変わらないと分かりにくいため、評価額が無い間は積立・利率の効果を見せる)。
   const snap = yearAssetCache[year] || { cash: 0, deposit: 0, invBal: {} };
   const prevSnap = yearAssetCache[year - 1];
   // 最初の入力月より前の月に使う基準額 = 前年末の残高(無ければ初期保有額)。
-  const startVal = {};
+  const runningVal = {};
+  const monthlyRate = {};
   (data.investments || []).forEach(inv => {
-    startVal[inv.id] = (prevSnap && prevSnap.invBal[inv.id] !== undefined)
+    runningVal[inv.id] = (prevSnap && prevSnap.invBal[inv.id] !== undefined)
       ? prevSnap.invBal[inv.id] : (inv.initialBalance || 0);
+    const rate = getYearlyEffectiveValue(`inv_${inv.id}_rate`, year);
+    monthlyRate[inv.id] = Math.pow(1 + rate / 100, 1 / 12) - 1; // 年率を「12回かけると年率になる」月利に変換
   });
-  const lastVal = {};
   for (let m = 1; m <= 12; m++) {
     let invSum = 0;
     (data.investments || []).forEach(inv => {
       const mv = getMonthlyOverride(`inv_${inv.id}_value`, year, m);
-      if (mv !== undefined && mv !== null && mv !== '') lastVal[inv.id] = mv;
-      // その月の入力 > 直近で入れた月 > (まだ無ければ)前年末/初期額
-      const v = (lastVal[inv.id] !== undefined) ? lastVal[inv.id] : startVal[inv.id];
-      invSum += v;
+      if (mv !== undefined && mv !== null && mv !== '') {
+        runningVal[inv.id] = mv; // 実額が入っていればそれを最新の基準にする
+      } else {
+        runningVal[inv.id] = runningVal[inv.id] * (1 + monthlyRate[inv.id])
+          + getMonthlyEffectiveValue(`inv_${inv.id}_contrib`, year, m); // 月利の複利＋積立額分を積み上げる
+      }
+      invSum += runningVal[inv.id];
     });
     setMonthlyComputedCell('monthInvestValue', m, invSum);
     setMonthlyComputedCell('monthTotalAssets', m, snap.cash + snap.deposit + invSum);
