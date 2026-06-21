@@ -595,7 +595,7 @@ function renderHero() {
       const yv = vcell ? vcell[startYear] : undefined;
       if (yv !== undefined && yv !== null && yv !== '') ov = yv;
     }
-    const val = (ov !== undefined) ? ov : (inv.initialBalance || 0);
+    const val = (ov !== undefined) ? ov : 0;
     return s + toYen(val);
   }, 0);
   const total = cash + deposit + invest;

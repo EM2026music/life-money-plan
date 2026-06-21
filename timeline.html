@@ -321,7 +321,7 @@
     display: inline-flex;
     align-items: center;
   }
-  /* 投資の見出し行(投資名・削除)と、その配下の項目(初期保有額/積立額/年率/残高)のインデント */
+  /* 投資の見出し行(投資名・削除)と、その配下の項目(積立額/年率/年初保有評価額/残高)のインデント */
   tr.invhead-row td { background: #f4fafc; }
   tr.invhead-row td.row-label { background: #f4fafc; font-weight: 700; }
   .row-label.inv-sub { padding-left: 24px; font-weight: 400; color: var(--text-light); }
@@ -1185,6 +1185,24 @@ function migrateData() {
     changed = true;
   }
 
+  // 投資の「初期保有額」を廃止し「年初保有評価額」に一本化。既存の初期保有額(0円以外)があり、
+  // 開始年の年初保有評価額がまだ未設定の投資は、その値を開始年の年初保有評価額として移す。
+  if (!data.migratedInvestInitbal) {
+    const startYear = data.startYear;
+    data.investments.forEach(inv => {
+      if (inv.initialBalance) {
+        const id = `inv_${inv.id}_value`;
+        const already = data.cells[id] && data.cells[id][startYear];
+        if (already === undefined || already === null || already === '') {
+          if (!data.cells[id]) data.cells[id] = {};
+          data.cells[id][startYear] = inv.initialBalance;
+        }
+      }
+    });
+    data.migratedInvestInitbal = true;
+    changed = true;
+  }
+
   // 預金(銀行ごと)。未設定なら、旧「現在の資産」を1口座の初期残高に移行して作成。
   if (!data.banks) {
     data.banks = [{ id: 'bank_default', name: '銀行', initialBalance: data.initialAssets || 0 }];
@@ -1240,11 +1258,10 @@ function buildInvestmentRows() {
   }
   data.investments.forEach(inv => {
     rows.push({ id: `inv_${inv.id}_head`, label: inv.name, type: 'invhead', invId: inv.id });
-    rows.push({ id: `inv_${inv.id}_initbal`, label: '初期保有額', type: 'initbal', invId: inv.id });
     rows.push({ id: `inv_${inv.id}_contrib`, label: '積立額', type: 'editable', default: 0, forwardFill: 'full', invId: inv.id });
     rows.push({ id: `inv_${inv.id}_rate`, label: '年率(%)', type: 'editable', default: inv.rate, forwardFill: 'full', invId: inv.id, isRate: true });
-    rows.push({ id: `inv_${inv.id}_value`, label: '年初評価額', type: 'valuation', invId: inv.id });
-    rows.push({ id: `inv_${inv.id}_balance`, label: '残高(自動計算)', type: 'computed', invId: inv.id });
+    rows.push({ id: `inv_${inv.id}_value`, label: '年初保有評価額', type: 'valuation', invId: inv.id });
+    rows.push({ id: `inv_${inv.id}_balance`, label: '年末残高(自動計算)', type: 'computed', invId: inv.id });
   });
   return rows;
 }
@@ -1685,88 +1702,6 @@ document.querySelectorAll('.collapsible-header[data-collapse-target]').forEach(h
   });
 });
 
-function renderInvestmentSettings() {
-  const container = document.getElementById('investmentList');
-  if (!container) return; // 設定フォームは廃止(グリッドで編集)
-  container.innerHTML = '';
-
-  if (data.investments.length === 0) {
-    const p = document.createElement('p');
-    p.className = 'empty-note';
-    p.textContent = '投資先が登録されていません。NISAや個別株などを追加すると、タイムラインに「投資額」「残高」の行が追加され、総資産に統合されます。';
-    container.appendChild(p);
-  }
-
-  data.investments.forEach(inv => {
-    const row = document.createElement('div');
-    row.className = 'investment-row';
-    row.innerHTML = `
-      <input type="text" class="inv-name" value="${inv.name}" data-id="${inv.id}">
-      <label>年率%<input type="number" class="inv-rate" value="${inv.rate}" step="0.1" data-id="${inv.id}"></label>
-      <label>初期保有額(円)<input type="number" class="inv-balance" value="${toYen(inv.initialBalance)}" data-id="${inv.id}"></label>
-      <button class="del-investment-btn" data-id="${inv.id}">削除</button>
-    `;
-    container.appendChild(row);
-  });
-
-  container.querySelectorAll('.inv-name').forEach(el => {
-    el.addEventListener('input', e => {
-      const inv = data.investments.find(i => i.id === e.target.dataset.id);
-      inv.name = e.target.value;
-      saveData();
-      ROWS = buildRows();
-      generateTable();
-      generateMonthlyTable();
-    });
-  });
-  container.querySelectorAll('.inv-rate').forEach(el => {
-    el.addEventListener('input', e => {
-      const inv = data.investments.find(i => i.id === e.target.dataset.id);
-      inv.rate = parseFloat(e.target.value) || 0;
-      saveData();
-      ROWS = buildRows();
-      recalcAll();
-    });
-    el.addEventListener('wheel', () => el.blur());
-  });
-  container.querySelectorAll('.inv-balance').forEach(el => {
-    el.addEventListener('input', e => {
-      const inv = data.investments.find(i => i.id === e.target.dataset.id);
-      inv.initialBalance = fromYen(parseFloat(e.target.value) || 0);
-      saveData();
-      recalcAll();
-    });
-    el.addEventListener('wheel', () => el.blur());
-  });
-  container.querySelectorAll('.del-investment-btn').forEach(el => {
-    el.addEventListener('click', e => {
-      const id = e.target.dataset.id;
-      data.investments = data.investments.filter(i => i.id !== id);
-      delete data.cells[`inv_${id}_contrib`];
-      delete data.cells[`inv_${id}_balance`];
-      delete data.monthlyCells[`inv_${id}_contrib`];
-      saveData();
-      ROWS = buildRows();
-      renderInvestmentSettings();
-      generateTable();
-      generateMonthlyTable();
-    });
-  });
-}
-
-{
-  const _aib = document.getElementById('addInvestmentBtn');
-  if (_aib) _aib.addEventListener('click', () => {
-    const n = data.investments.length + 1;
-    data.investments.push({ id: 'inv' + Date.now(), name: '投資' + n, rate: 5, initialBalance: 0 });
-    saveData();
-    ROWS = buildRows();
-    renderInvestmentSettings();
-    generateTable();
-    generateMonthlyTable();
-  });
-}
-
 function renderLifeEventSettings() {
   const container = document.getElementById('lifeEventList');
   if (!container) return; // 設定フォームは廃止(グリッドで編集)
@@ -2202,7 +2137,6 @@ function addInvestmentInline() {
   data.investments.push({ id: invId, name: '投資' + n, rate: 5, initialBalance: 0 });
   saveData();
   ROWS = buildRows();
-  renderInvestmentSettings();
   generateTable();
   generateMonthlyTable();
   scrollToNewRow('inv_' + invId + '_contrib');
@@ -2310,7 +2244,6 @@ function renameInvestmentInline(id, name) {
   ROWS = buildRows();
   generateTable();
   generateMonthlyTable();
-  renderInvestmentSettings();
 }
 
 function deleteInvestmentInline(id) {
@@ -2326,7 +2259,6 @@ function deleteInvestmentInline(id) {
   ROWS = buildRows();
   generateTable();
   generateMonthlyTable();
-  renderInvestmentSettings();
 }
 
 // --- 家族構成の編集(名前・生年・追加・削除。最大10人) ---
@@ -2449,7 +2381,7 @@ function buildEditableCategoryLabel(labelTd, row) {
     return;
   }
 
-  // 投資の見出し行: 名前をその場で編集・削除(配下に初期保有額/積立額/年率/残高が並ぶ)
+  // 投資の見出し行: 名前をその場で編集・削除(配下に積立額/年率/年初保有評価額/残高が並ぶ)
   if (row.type === 'invhead') {
     const inv = data.investments.find(x => x.id === row.invId);
     const nameInput = document.createElement('input');
@@ -2669,11 +2601,11 @@ function generateTable() {
         td.dataset.rowId = row.id;
         td.dataset.year = year;
         if (row.invId && row.id.endsWith('_balance')) {
-          td.title = '【残高(自動計算)とは】初期保有額・積立額・年率から計算した残高です。\n'
-            + '「年初評価額」にその年の実額を入れている場合は、その額を年初(1月)時点として、年率・積立額で年末まで伸ばした額になります。\n'
-            + '※「年初評価額」が空欄の年は、年に1回まとめて積立額を足す簡易計算をしています。月次プランナーは毎月の積立を毎月複利で計算しているため、'
+          td.title = '【年末残高(自動計算)とは】積立額・年率から計算した、その年の年末時点の残高です。\n'
+            + '「年初保有評価額」にその年の実額を入れている場合は、その額を年初(1月)時点として、年率・積立額で年末まで伸ばした額になります。\n'
+            + '※「年初保有評価額」が空欄の年は、年に1回まとめて積立額を足す簡易計算をしています。月次プランナーは毎月の積立を毎月複利で計算しているため、'
             + '利率・積立額が大きい場合、月次の12月の見込み額とこの残高がごくわずかにずれることがあります。'
-            + '実害が出るほどの差ではありませんが、気になる場合は「年初評価額」に実際の額を入れれば、月次と同じ計算方法になりズレは消えます。';
+            + '実害が出るほどの差ではありませんが、気になる場合は「年初保有評価額」に実際の額を入れれば、月次と同じ計算方法になりズレは消えます。';
         }
       } else if (row.type === 'eventrow') {
         // イベントは該当年(ev.year)の列に「イベント名(上段)＋金額(下段)」の2段で表示。他の年は「·」。
@@ -2703,24 +2635,6 @@ function generateTable() {
           td.style.textAlign = 'center';
           td.textContent = '·';
         }
-      } else if (row.type === 'initbal') {
-        // 初期保有額(今すでに持っている額)は開始年の1セルだけ入力可。他の年は「—」。
-        if (year === years[0]) {
-          const inv = data.investments.find(i => i.id === row.invId);
-          const input = document.createElement('input');
-          input.className = 'cell-input';
-          input.type = 'text';
-          input.dataset.invInitbal = row.invId;
-          input.value = formatInputYen(inv ? inv.initialBalance : 0);
-          input.title = '今すでに持っている額（開始時点の残高）';
-          attachMoneyInputFormat(input);
-          input.addEventListener('input', onInitBalInput);
-          td.appendChild(input);
-        } else {
-          td.style.color = 'var(--text-light)';
-          td.style.textAlign = 'center';
-          td.textContent = '—';
-        }
       } else if (row.type === 'valuation') {
         // 評価額(実額): その年に実際の評価額を入れると、残高をその額に上書きする。
         // 移し替え(定期→NISA等)・相場の増減を含む"今いくら"をそのまま反映。現金からは引かない。空欄なら自動計算。
@@ -2746,12 +2660,12 @@ function generateTable() {
           input.placeholder = '実額';
           const ov = getValuationOverride(row.invId, year);
           input.value = ov !== null ? formatInputYen(ov) : '';
-          input.title = '【年初評価額とは】証券会社のアプリ等に表示されている、今の本当の評価額をそのまま入れる欄です。\n'
-            + '・このセルは「年初(1月)時点でこれくらい」という額として扱われ、そこから年率・積立額で自動的に増やして、その年の「残高(自動計算)」を計算します。\n'
+          input.title = '【年初保有評価額とは】証券会社のアプリ等に表示されている、今の本当の評価額をそのまま入れる欄です。\n'
+            + '・このセルは「年初(1月)時点でこれくらい」という額として扱われ、そこから年率・積立額で自動的に増やして、その年の「年末残高(自動計算)」を計算します。\n'
             + '・定期預金からNISAに移した、相場が上下した、など理由は問いません。とにかく「だいたいこれくらい」を入れてください。\n'
             + '・手元現金からは引かれません(財布から出したお金ではなく、すでにある資産の置き場所・価値が変わっただけのため)。\n'
             + '・何月の時点かまで分けて入れたい場合は、月次プランナーの「月末評価額」を使ってください。そちらは入れた月から年末まで、年率・積立額で自動的に伸ばして計算します(その月の額が優先されます)。\n'
-            + '・空欄に戻すと、この上書きは解除されて自動計算(初期保有額・積立額・年率からの計算)に戻ります。';
+            + '・空欄に戻すと、この上書きは解除されて自動計算(積立額・年率からの計算)に戻ります。';
           attachValuationInputFormat(input);
           input.addEventListener('input', onValuationInput);
           td.appendChild(input);
@@ -2886,17 +2800,6 @@ function onCellInput(e) {
   }
 }
 
-// 投資の「初期保有額」セル(開始年)の入力。inv.initialBalance(万円)に保存し、設定パネルとも同期。
-function onInitBalInput(e) {
-  const invId = e.target.dataset.invInitbal;
-  const inv = data.investments.find(i => i.id === invId);
-  if (!inv) return;
-  inv.initialBalance = parseYenInput(e.target.value);
-  saveData();
-  const setInput = document.querySelector(`.inv-balance[data-id="${invId}"]`);
-  if (setInput && setInput !== document.activeElement) setInput.value = toYen(inv.initialBalance);
-  recalcAll();
-}
 
 // 投資の「評価額(実額)」セルの入力。その年に実際の評価額を保存(万円)。
 // 空欄に戻すとオーバーライド解除＝自動計算に戻る。現金チェックはしない(移し替え・相場込みのため)。
@@ -3042,11 +2945,6 @@ function updateInputCells(years) {
       }
       input.classList.toggle('inherited', isInherited(row.id, year));
     });
-  });
-  // グリッドの「初期保有額」セルを inv.initialBalance と同期(設定パネルで変えた時用)
-  data.investments.forEach(inv => {
-    const input = document.querySelector(`#timelineBody input[data-inv-initbal="${inv.id}"]`);
-    if (input && input !== document.activeElement) input.value = formatInputYen(inv.initialBalance);
   });
   // 預金の「初期残高」セルを bank.initialBalance と同期
   (data.banks || []).forEach(bank => {
@@ -3196,13 +3094,13 @@ function generateMonthlyTable() {
           + 'すでに月別の欄に実際の評価額を入力済みのため、ここは編集できません(入力しても反映されません)。\n'
           + '基準額を変更したい場合は、まず下の「↺」ボタンでこの年の月別評価額をすべて消してから入力してください。';
       } else {
-        baseInput.placeholder = '年初評価額';
+        baseInput.placeholder = '年初保有評価額';
         const yv = data.cells[monthlyValueId] && data.cells[monthlyValueId][year];
         baseInput.value = (yv !== undefined && yv !== null && yv !== '') ? formatInputYen(yv) : '';
-        baseInput.title = '【基準額(年初評価額)とは】年次タイムラインの「年初評価額」と同じ値です(どちらかに入れればもう片方にも反映されます)。\n'
+        baseInput.title = '【基準額(年初保有評価額)とは】年次タイムラインの「年初保有評価額」と同じ値です(どちらかに入れればもう片方にも反映されます)。\n'
           + '・「年初(1月)時点でこれくらい」という額を入れる欄です。入れると、そこから年率・積立額で自動的に増やして、月別に何も入力していない月の見込み額を表示します。\n'
           + '・実際にその月の本当の額が分かったら、下の月別の欄にその月の月末評価額を入れてください。その月の額が優先され、その月から先はそこからまた増やして計算します。\n'
-          + '・空欄に戻すと、初期保有額・積立額・年率からの自動計算に戻ります。';
+          + '・空欄に戻すと、積立額・年率からの自動計算に戻ります。';
       }
       attachValuationInputFormat(baseInput);
       baseInput.addEventListener('input', onBaseValuationInput);
@@ -3532,8 +3430,8 @@ function recalcMonthlyTable() {
   }
 
   // 「今いくら」用: 月ごとの 投資評価額合計 と 総資産(実額)。
-  // ・基準額(今年の評価額)があれば、それを「年初(1月)の額」として、年率を月割りした複利＋積立額で
-  //   1月から伸ばして表示する。無ければ前年末の残高(無ければ初期保有額)から同様に伸ばす。
+  // ・基準額(年初保有評価額)があれば、それを「年初(1月)の額」として、年率を月割りした複利＋積立額で
+  //   1月から伸ばして表示する。無ければ前年末の残高(無ければ0)から同様に伸ばす。
   // ・月末評価額を入れた月は、その額をそのまま採用(実際の値なので最優先)。その月から先は同じ計算で伸ばす。
   //   (年次タイムラインの計算(年初/月から年末まで伸ばす)と一致させるため)
   const snap = yearAssetCache[year] || { cash: 0, deposit: 0, invBal: {} };
@@ -3543,13 +3441,13 @@ function recalcMonthlyTable() {
   (data.investments || []).forEach(inv => {
     const baseCell = data.cells[`inv_${inv.id}_value`] && data.cells[`inv_${inv.id}_value`][year];
     const hasBaseCell = (baseCell !== undefined && baseCell !== null && baseCell !== '');
-    const fallback = (prevSnap && prevSnap.invBal[inv.id] !== undefined) ? prevSnap.invBal[inv.id] : (inv.initialBalance || 0);
+    const fallback = (prevSnap && prevSnap.invBal[inv.id] !== undefined) ? prevSnap.invBal[inv.id] : 0;
     runningVal[inv.id] = hasBaseCell ? baseCell : fallback;
     const rate = getYearlyEffectiveValue(`inv_${inv.id}_rate`, year);
     // 年率が-100%以下(極端な誤入力等)だとMath.pow(負の数, 1/12)がNaNになるため、その場合は-1(全損)に固定する。
     const yearMultiplier = 1 + rate / 100;
     monthlyRate[inv.id] = yearMultiplier > 0 ? Math.pow(yearMultiplier, 1 / 12) - 1 : -1; // 年率を「12回かけると年率になる」月利に変換
-    // 基準額(今年の評価額)セルの表示も最新化(年次タイムラインの評価額と同じ値)。
+    // 基準額(年初保有評価額)セルの表示も最新化(年次タイムラインの年初保有評価額と同じ値)。
     const baseInput = document.querySelector(`#monthlyBody input[data-inv-value-base="${inv.id}"]`);
     if (baseInput && baseInput !== document.activeElement) {
       baseInput.value = hasBaseCell ? formatInputYen(baseCell) : '';
@@ -3604,7 +3502,7 @@ function recalcAll() {
   const prevBankBal = {};
   (data.banks || []).forEach(b => { prevBankBal[b.id] = b.initialBalance || 0; });
   const prevBalances = {};
-  data.investments.forEach(inv => { prevBalances[inv.id] = inv.initialBalance; });
+  data.investments.forEach(inv => { prevBalances[inv.id] = 0; });
 
   const cashArr = [], investArr = [], totalArr = [], depositArr = [];
   let firstYearStats = null;
@@ -3878,7 +3776,6 @@ migrateData();
 initSettingsInputs();
 renderIncomeSettings();
 renderCategorySettings();
-renderInvestmentSettings();
 renderLifeEventSettings();
 renderInsuranceSettings();
 generateTable();
