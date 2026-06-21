@@ -1361,10 +1361,36 @@ function setCellValue(rowId, year, value) {
   clearMonthlyOverrides(rowId, year);
 }
 
-// 投資の「評価額(実額)」: その年に実際の評価額が入っていれば返す(無ければnull)。
-// フォワードフィルしない=入れた年だけ有効。移し替え(定期→NISA等)や相場込みの"今いくら"を表す。
+// その年の月別セル(monthlyCells)のうち、入力された一番新しい月の値を返す(無ければnull)。
+// = 月末の評価額を毎月入れたとき、その年の"今(最新)"の額になる。
+function latestMonthlyValue(rowId, year) {
+  const mc = data.monthlyCells[rowId] && data.monthlyCells[rowId][year];
+  if (mc) {
+    for (let m = 12; m >= 1; m--) {
+      const v = mc[m];
+      if (v !== undefined && v !== null && v !== '') return v;
+    }
+  }
+  return null;
+}
+
+// 投資の「評価額(実額)」: その年の実際の評価額(無ければnull)。
+// 月別入力があればその年の最新月を優先、無ければ年次セルを見る。フォワードフィルしない。
+// 移し替え(定期→NISA等)や相場込みの"今いくら"を表す。
 function getValuationOverride(invId, year) {
   const id = `inv_${invId}_value`;
+  const latest = latestMonthlyValue(id, year);
+  if (latest !== null) return latest;
+  const v = data.cells[id] && data.cells[id][year];
+  return (v !== undefined && v !== null && v !== '') ? v : null;
+}
+
+// 銀行預金の「評価額(実額)」: 取り崩しなどで残高を実額に上書きしたいとき用。
+// 月別入力があれば最新月を優先、無ければ年次セル。無ければnull(=通常の残高計算)。
+function getBankValuationOverride(bankId, year) {
+  const id = `bank_${bankId}_value`;
+  const latest = latestMonthlyValue(id, year);
+  if (latest !== null) return latest;
   const v = data.cells[id] && data.cells[id][year];
   return (v !== undefined && v !== null && v !== '') ? v : null;
 }
@@ -2867,6 +2893,23 @@ function onValuationInput(e) {
   recalcAll();
 }
 
+// 月次プランナーの「評価額(実額)」月セルの入力。その月の実際の評価額を保存(万円)。
+// 入れた月のうち一番新しい月が"今"として年次・TOP・総資産に反映される。現金チェックはしない。
+function onMonthlyValuationInput(e) {
+  const invId = e.target.dataset.invValueMonth;
+  const month = parseInt(e.target.dataset.month);
+  const year = data.monthlySelectedYear;
+  const id = `inv_${invId}_value`;
+  const raw = e.target.value.trim();
+  if (raw === '') {
+    if (data.monthlyCells[id] && data.monthlyCells[id][year]) delete data.monthlyCells[id][year][month];
+  } else {
+    setMonthlyOverride(id, year, month, parseYenInput(e.target.value));
+  }
+  saveData();
+  recalcAll(); // 末尾でrecalcMonthlyTableも走り、月次の総資産(実額)も更新される
+}
+
 // 「現金」行ラベルの手元現金入力。data.initialAssets(万円)に保存。
 function onCashInitialInput(e) {
   data.initialAssets = parseYenInput(e.target.value);
@@ -2989,6 +3032,8 @@ const MONTHLY_TOTAL_LABELS = {
   monthIncomeTotal: '月間収入合計',
   monthExpenseTotal: '月間支出合計',
   monthBalance: '月間収支',
+  monthInvestValue: '投資 評価額 合計',
+  monthTotalAssets: '総資産(実額)',
 };
 
 function generateMonthlyTable() {
@@ -3007,7 +3052,7 @@ function generateMonthlyTable() {
   let pendingSection = null;
   ROWS.forEach(row => {
     if (row.section) { pendingSection = row; return; }
-    const isMonthly = (row.type === 'editable' && row.forwardFill !== undefined && !row.isRate) || (row.id && row.id.startsWith('catgrp_')) || row.type === 'invhead' || row.type === 'bankhead';
+    const isMonthly = (row.type === 'editable' && row.forwardFill !== undefined && !row.isRate) || (row.id && row.id.startsWith('catgrp_')) || row.type === 'invhead' || row.type === 'bankhead' || row.type === 'valuation';
     if (!isMonthly) return;
     if (pendingSection) {
       const name = pendingSection.section.replace(/（.*?）/, '');
@@ -3046,6 +3091,48 @@ function generateMonthlyTable() {
       baseTd.className = 'base-cell';
       tr.appendChild(baseTd);
       for (let m = 1; m <= 12; m++) tr.appendChild(document.createElement('td'));
+      body.appendChild(tr);
+      return;
+    }
+
+    if (row.type === 'valuation') {
+      // 投資の「評価額(実額)」: 1〜12月それぞれに、その月末の実際の評価額を入れる(絶対値)。
+      // 入れた月のうち一番新しい月が"今"として年次・TOP・総資産に反映される。
+      const labelTd = document.createElement('td');
+      labelTd.className = 'row-label inv-sub';
+      labelTd.appendChild(document.createTextNode(row.label));
+      const resetBtn = document.createElement('button');
+      resetBtn.className = 'reset-btn';
+      resetBtn.title = 'この年の月別評価額をすべて消す';
+      resetBtn.textContent = '↺';
+      resetBtn.addEventListener('click', () => {
+        const id = `inv_${row.invId}_value`;
+        if (data.monthlyCells[id]) delete data.monthlyCells[id][year];
+        saveData();
+        generateMonthlyTable();
+        recalcAll();
+      });
+      labelTd.appendChild(resetBtn);
+      tr.appendChild(labelTd);
+      const baseTd = document.createElement('td');
+      baseTd.className = 'base-cell';
+      tr.appendChild(baseTd); // 評価額は月ごとの絶対値なので「基準額(月額)」は無し
+      for (let m = 1; m <= 12; m++) {
+        const td = document.createElement('td');
+        const input = document.createElement('input');
+        input.className = 'cell-input';
+        input.type = 'text';
+        input.dataset.invValueMonth = row.invId;
+        input.dataset.month = m;
+        input.placeholder = '実額';
+        const mv = getMonthlyOverride(`inv_${row.invId}_value`, year, m);
+        input.value = (mv !== undefined && mv !== null && mv !== '') ? formatInputYen(mv) : '';
+        input.title = 'その月末の実際の評価額。入れた月のうち一番新しい月が"今"として総資産・TOPに反映されます。';
+        attachMoneyInputFormat(input);
+        input.addEventListener('input', onMonthlyValuationInput);
+        td.appendChild(input);
+        tr.appendChild(td);
+      }
       body.appendChild(tr);
       return;
     }
@@ -3157,6 +3244,11 @@ function generateMonthlyTable() {
   const expTotalRow = makeMonthlyTotalRow('monthExpenseTotal');
   if (invSec) body.insertBefore(expTotalRow, invSec); else body.appendChild(expTotalRow);
   body.appendChild(makeMonthlyTotalRow('monthBalance'));
+  // 「今いくら」用: 投資の評価額合計と、現金＋預金＋投資(実額)の総資産を月ごとに表示。
+  if (data.investments && data.investments.length) {
+    body.appendChild(makeMonthlyTotalRow('monthInvestValue'));
+  }
+  body.appendChild(makeMonthlyTotalRow('monthTotalAssets'));
 
   body.querySelectorAll('.row-group-toggle').forEach(btn => {
     btn.addEventListener('click', () => toggleExpenseGroup(btn.dataset.groupId));
@@ -3291,12 +3383,41 @@ function recalcMonthlyTable() {
     setMonthlyComputedCell('monthBalance', m, inc - exp);
   }
 
+  // 「今いくら」用: 月ごとの 投資評価額合計 と 総資産(実額)。
+  // 投資は、その月に評価額を入れていればその額、入れてない月は直近で入れた月を持ち越す
+  // (まだ一度も入れてなければその年の計算残高)。現金・預金はその年の値(月内では一定)。
+  const snap = yearAssetCache[year] || { cash: 0, deposit: 0, invBal: {} };
+  const prevSnap = yearAssetCache[year - 1];
+  // 最初の入力月より前の月に使う基準額 = 前年末の残高(無ければ初期保有額)。
+  const startVal = {};
+  (data.investments || []).forEach(inv => {
+    startVal[inv.id] = (prevSnap && prevSnap.invBal[inv.id] !== undefined)
+      ? prevSnap.invBal[inv.id] : (inv.initialBalance || 0);
+  });
+  const lastVal = {};
+  for (let m = 1; m <= 12; m++) {
+    let invSum = 0;
+    (data.investments || []).forEach(inv => {
+      const mv = getMonthlyOverride(`inv_${inv.id}_value`, year, m);
+      if (mv !== undefined && mv !== null && mv !== '') lastVal[inv.id] = mv;
+      // その月の入力 > 直近で入れた月 > (まだ無ければ)前年末/初期額
+      const v = (lastVal[inv.id] !== undefined) ? lastVal[inv.id] : startVal[inv.id];
+      invSum += v;
+    });
+    setMonthlyComputedCell('monthInvestValue', m, invSum);
+    setMonthlyComputedCell('monthTotalAssets', m, snap.cash + snap.deposit + invSum);
+  }
+
 }
 
 // --- recalculation ---
 
+// 年ごとの資産内訳(現金・預金・投資別残高)。recalcAllで毎回作り直し、月次の資産合計表示で使う。
+let yearAssetCache = {};
+
 function recalcAll() {
   const years = getYears();
+  yearAssetCache = {};
 
   data.family.forEach(m => {
     years.forEach(year => {
@@ -3338,6 +3459,7 @@ function recalcAll() {
 
     let investTotal = 0;
     let investAssetsTotal = 0;
+    const invBalThisYear = {}; // 月次の資産合計用に、各投資のこの年の残高を控えておく
     data.investments.forEach(inv => {
       const contribId = `inv_${inv.id}_contrib`;
       const balanceId = `inv_${inv.id}_balance`;
@@ -3355,6 +3477,7 @@ function recalcAll() {
       }
       prevBalances[inv.id] = newBalance;
       investAssetsTotal += newBalance;
+      invBalThisYear[inv.id] = newBalance;
       setComputedCell(balanceId, year, newBalance);
     });
 
@@ -3378,6 +3501,9 @@ function recalcAll() {
 
     const cashAssets = prevCash + balance - investTotal - depositInflow;
     const totalAssets = cashAssets + investAssetsTotal + depositAssets;
+
+    // 月次プランナーの「資産合計(実額)」用に、その年の現金・預金・投資別残高を控える。
+    yearAssetCache[year] = { cash: cashAssets, deposit: depositAssets, invBal: invBalThisYear };
 
     setComputedCell('incomeTotal', year, incomeTotal);
     setComputedCell('expTotal', year, expTotal);

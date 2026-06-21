@@ -572,12 +572,24 @@ document.getElementById('addFamilyBtn').addEventListener('click', () => {
 function renderHero() {
   const cash = toYen(data.initialAssets || 0);
   const deposit = (data.banks || []).reduce((s, b) => s + toYen(b.initialBalance || 0), 0);
-  // 投資は、開始年に「評価額(実額)」が入っていればそれを優先(年次タイムラインと一致させる)。
+  // 投資は「評価額(実額)」が入っていればそれを優先(年次タイムラインと一致させる)。
+  // 月別入力があれば開始年の最新月、無ければ年次セル、無ければ初期保有額。
   const startYear = data.startYear;
   const invest = (data.investments || []).reduce((s, inv) => {
-    const vcell = data.cells && data.cells['inv_' + inv.id + '_value'];
-    const ov = vcell ? vcell[startYear] : undefined;
-    const val = (ov !== undefined && ov !== null && ov !== '') ? ov : (inv.initialBalance || 0);
+    const id = 'inv_' + inv.id + '_value';
+    let ov;
+    const mc = data.monthlyCells && data.monthlyCells[id] && data.monthlyCells[id][startYear];
+    if (mc) {
+      for (let m = 12; m >= 1; m--) {
+        if (mc[m] !== undefined && mc[m] !== null && mc[m] !== '') { ov = mc[m]; break; }
+      }
+    }
+    if (ov === undefined) {
+      const vcell = data.cells && data.cells[id];
+      const yv = vcell ? vcell[startYear] : undefined;
+      if (yv !== undefined && yv !== null && yv !== '') ov = yv;
+    }
+    const val = (ov !== undefined) ? ov : (inv.initialBalance || 0);
     return s + toYen(val);
   }, 0);
   const total = cash + deposit + invest;
