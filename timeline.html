@@ -2910,6 +2910,23 @@ function onMonthlyValuationInput(e) {
   recalcAll(); // 末尾でrecalcMonthlyTableも走り、月次の総資産(実額)も更新される
 }
 
+// 月次プランナーの「評価額(実額)」基準額(年初の額)の入力。年次タイムラインの評価額(実額)と同じ値(年単位)を保存。
+// 月別に何も入れていない月は、ここからの自動計算(積立＋利率)で表示される。
+function onBaseValuationInput(e) {
+  const invId = e.target.dataset.invValueBase;
+  const year = data.monthlySelectedYear;
+  const id = `inv_${invId}_value`;
+  if (!data.cells[id]) data.cells[id] = {};
+  const raw = e.target.value.trim();
+  if (raw === '') {
+    delete data.cells[id][year];
+  } else {
+    data.cells[id][year] = parseYenInput(e.target.value);
+  }
+  saveData();
+  recalcAll();
+}
+
 // 「現金」行ラベルの手元現金入力。data.initialAssets(万円)に保存。
 function onCashInitialInput(e) {
   data.initialAssets = parseYenInput(e.target.value);
@@ -3116,7 +3133,20 @@ function generateMonthlyTable() {
       tr.appendChild(labelTd);
       const baseTd = document.createElement('td');
       baseTd.className = 'base-cell';
-      tr.appendChild(baseTd); // 評価額は月ごとの絶対値なので「基準額(月額)」は無し
+      const baseInput = document.createElement('input');
+      baseInput.className = 'cell-input base-input';
+      baseInput.type = 'text';
+      baseInput.dataset.invValueBase = row.invId;
+      baseInput.placeholder = '年初の額';
+      {
+        const yv = data.cells[`inv_${row.invId}_value`] && data.cells[`inv_${row.invId}_value`][year];
+        baseInput.value = (yv !== undefined && yv !== null && yv !== '') ? formatInputYen(yv) : '';
+      }
+      baseInput.title = 'この年の出発点となる評価額（年次タイムラインの評価額(実額)と同じ値）。月別に入力が無い月はここからの自動計算(積立＋利率)で表示されます。';
+      attachMoneyInputFormat(baseInput);
+      baseInput.addEventListener('input', onBaseValuationInput);
+      baseTd.appendChild(baseInput);
+      tr.appendChild(baseTd);
       for (let m = 1; m <= 12; m++) {
         const td = document.createElement('td');
         const input = document.createElement('input');
@@ -3127,7 +3157,8 @@ function generateMonthlyTable() {
         input.placeholder = '実額';
         const mv = getMonthlyOverride(`inv_${row.invId}_value`, year, m);
         input.value = (mv !== undefined && mv !== null && mv !== '') ? formatInputYen(mv) : '';
-        input.title = 'その月末の実際の評価額。入れた月のうち一番新しい月が"今"として総資産・TOPに反映されます。';
+        input.classList.toggle('inherited', mv === undefined || mv === null || mv === '');
+        input.title = 'その月末の実際の評価額。入れた月のうち一番新しい月が"今"として総資産・TOPに反映されます。空欄はここに自動計算値を薄く表示します。';
         attachMoneyInputFormat(input);
         input.addEventListener('input', onMonthlyValuationInput);
         td.appendChild(input);
@@ -3389,14 +3420,21 @@ function recalcMonthlyTable() {
   // (積立額を入れても画面が変わらないと分かりにくいため、評価額が無い間は積立・利率の効果を見せる)。
   const snap = yearAssetCache[year] || { cash: 0, deposit: 0, invBal: {} };
   const prevSnap = yearAssetCache[year - 1];
-  // 最初の入力月より前の月に使う基準額 = 前年末の残高(無ければ初期保有額)。
+  // 最初の入力月より前の月に使う基準額 = この年の「基準額(年初の額)」セルがあればそれ、
+  // 無ければ前年末の残高(無ければ初期保有額)。
   const runningVal = {};
   const monthlyRate = {};
   (data.investments || []).forEach(inv => {
-    runningVal[inv.id] = (prevSnap && prevSnap.invBal[inv.id] !== undefined)
-      ? prevSnap.invBal[inv.id] : (inv.initialBalance || 0);
+    const baseCell = data.cells[`inv_${inv.id}_value`] && data.cells[`inv_${inv.id}_value`][year];
+    const fallback = (prevSnap && prevSnap.invBal[inv.id] !== undefined) ? prevSnap.invBal[inv.id] : (inv.initialBalance || 0);
+    runningVal[inv.id] = (baseCell !== undefined && baseCell !== null && baseCell !== '') ? baseCell : fallback;
     const rate = getYearlyEffectiveValue(`inv_${inv.id}_rate`, year);
     monthlyRate[inv.id] = Math.pow(1 + rate / 100, 1 / 12) - 1; // 年率を「12回かけると年率になる」月利に変換
+    // 基準額(年初の額)セルの表示も最新化(年次タイムラインの評価額(実額)と同じ値)。
+    const baseInput = document.querySelector(`#monthlyBody input[data-inv-value-base="${inv.id}"]`);
+    if (baseInput && baseInput !== document.activeElement) {
+      baseInput.value = (baseCell !== undefined && baseCell !== null && baseCell !== '') ? formatInputYen(baseCell) : '';
+    }
   });
   for (let m = 1; m <= 12; m++) {
     let invSum = 0;
@@ -3409,6 +3447,12 @@ function recalcMonthlyTable() {
           + getMonthlyEffectiveValue(`inv_${inv.id}_contrib`, year, m); // 月利の複利＋積立額分を積み上げる
       }
       invSum += runningVal[inv.id];
+      // その月のセル表示も最新化。実額が入っていればそのまま、無ければ自動計算値を薄く(inherited)表示。
+      const monthInput = document.querySelector(`#monthlyBody input[data-inv-value-month="${inv.id}"][data-month="${m}"]`);
+      if (monthInput && monthInput !== document.activeElement) {
+        monthInput.value = formatInputYen(runningVal[inv.id]);
+        monthInput.classList.toggle('inherited', mv === undefined || mv === null || mv === '');
+      }
     });
     setMonthlyComputedCell('monthInvestValue', m, invSum);
     setMonthlyComputedCell('monthTotalAssets', m, snap.cash + snap.deposit + invSum);
