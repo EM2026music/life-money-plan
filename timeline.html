@@ -374,6 +374,7 @@
     font-weight: 400;
   }
   .birth-inline:focus { outline: none; border-color: var(--accent); }
+  .birth-month-inline { width: 32px; margin-left: 2px; }
   tr.computed-row td.computed-cell { font-weight: 700; background: #f7f9fb; }
   tr.total-row td { border-top: 2px solid var(--accent-line); }
   tr.total-row .row-label { color: var(--accent); }
@@ -1205,6 +1206,15 @@ function insurancePremiumTotal(year) {
 // その年の保険受取（学資保険など）合計（万円）。
 function insurancePayoutTotal(year) {
   return data.insurances.reduce((s, ins) => s + (ins.payoutYear === year ? (ins.payoutAmount || 0) : 0), 0);
+}
+
+// 学年判定用の「年度年齢」。日本の学年は4月2日が区切り(4/2〜翌4/1生まれが同学年)なので、
+// 生まれ月が1〜3月の場合は、同じ生まれ年でも4〜12月生まれの子より学年が1つ上になる。
+// 生まれ月が分かっていればそれで正確に判定し、分からなければ簡易の年齢(year-birth)をそのまま使う(目安)。
+function academicAge(year, birth, birthMonth) {
+  const age = year - birth;
+  if (!birthMonth) return age;
+  return birthMonth <= 3 ? age : age - 1;
 }
 
 // 年齢から日本の学年を返す(目安。4月始まりの厳密判定はしていない)。子の年齢セルに表示。
@@ -2385,6 +2395,15 @@ function setFamilyBirth(id, v) {
   recalcAll();
 }
 
+function setFamilyBirthMonth(id, v) {
+  const m = data.family.find(x => x.id === id);
+  if (!m) return;
+  const n = v === '' ? null : parseInt(v);
+  m.birthMonth = (n != null && n >= 1 && n <= 12) ? n : null;
+  saveData();
+  recalcAll();
+}
+
 function deleteFamilyMember(id) {
   const m = data.family.find(x => x.id === id);
   if (!m) return;
@@ -2609,6 +2628,19 @@ function generateTable() {
       birthInput.value = (m && m.birth != null) ? m.birth : '';
       birthInput.addEventListener('change', e => setFamilyBirth(row.familyId, e.target.value));
       labelTd.appendChild(birthInput);
+      if (m && m.type === 'child') {
+        // 学年を正しく出すための生まれ月(任意)。4/2〜翌4/1生まれが同学年になる日本のルールに対応。
+        const monthInput = document.createElement('input');
+        monthInput.type = 'number';
+        monthInput.min = '1';
+        monthInput.max = '12';
+        monthInput.className = 'birth-inline birth-month-inline';
+        monthInput.placeholder = '月';
+        monthInput.title = '生まれ月(分かれば)。学年の判定がより正確になります(4/2〜翌4/1生まれが同学年というルールに対応)。';
+        monthInput.value = (m.birthMonth != null) ? m.birthMonth : '';
+        monthInput.addEventListener('change', e => setFamilyBirthMonth(row.familyId, e.target.value));
+        labelTd.appendChild(monthInput);
+      }
       const del = document.createElement('button');
       del.type = 'button';
       del.className = 'label-del-btn';
@@ -2737,24 +2769,39 @@ function generateTable() {
       } else if (row.type === 'valuation') {
         // 評価額(実額): その年に実際の評価額を入れると、残高をその額に上書きする。
         // 移し替え(定期→NISA等)・相場の増減を含む"今いくら"をそのまま反映。現金からは引かない。空欄なら自動計算。
-        const input = document.createElement('input');
-        input.className = 'cell-input';
-        input.type = 'text';
-        input.dataset.invValue = row.invId;
-        input.dataset.year = year;
-        input.placeholder = '実額';
-        const ov = getValuationOverride(row.invId, year);
-        input.value = ov !== null ? formatInputYen(ov) : '';
-        input.title = '【評価額とは】証券会社のアプリ等に表示されている、今の本当の評価額をそのまま入れる欄です。\n'
-          + '・ここに数字を入れると、その年の「残高(自動計算)」はこの額にそのまま置き換わります。\n'
-          + '・定期預金からNISAに移した、相場が上下した、など理由は問いません。とにかく「今いくらか」を入れてください。\n'
-          + '・手元現金からは引かれません(財布から出したお金ではなく、すでにある資産の置き場所・価値が変わっただけのため)。\n'
-          + '・このセルは「年」単位の入力です。何月の時点かは分からないため、システムは「年末時点の額」として扱います(年の途中の値として年率で増やしたりはしません)。\n'
-          + '・何月の時点かまで分けて入れたい場合は、月次プランナーの「月末評価額」を使ってください。そちらは入れた月から年末まで、年率・積立額で自動的に伸ばして計算します。\n'
-          + '・空欄に戻すと、この上書きは解除されて自動計算(初期保有額・積立額・年率からの計算)に戻ります。';
-        attachMoneyInputFormat(input);
-        input.addEventListener('input', onValuationInput);
-        td.appendChild(input);
+        const monthlyId = `inv_${row.invId}_value`;
+        if (hasMonthlyOverrides(monthlyId, year)) {
+          // 月次プランナーで「月末評価額」が入力済みの年は、そちらが優先される。
+          // ここに編集できる入力欄を出すと「入れても反映されない」という分かりにくい状態になるため、
+          // 編集不可の参考表示にして、月次プランナー側で変更してもらうよう案内する。
+          const ov = getValuationOverride(row.invId, year);
+          td.style.color = 'var(--text-light)';
+          td.style.textAlign = 'right';
+          td.textContent = (ov !== null ? formatInputYen(ov) : '') + ' ※';
+          td.title = '【この年は月次プランナーが優先されています】\n'
+            + 'すでに月次プランナーで「月末評価額」を入力済みのため、ここでは編集できません(入力しても反映されません)。\n'
+            + '表示されている額は、月次プランナーで入力した一番新しい月の評価額(またはそこから年末まで自動計算した額)です。\n'
+            + '変更したい場合は、月次プランナーの「月末評価額」の方を編集してください。';
+        } else {
+          const input = document.createElement('input');
+          input.className = 'cell-input';
+          input.type = 'text';
+          input.dataset.invValue = row.invId;
+          input.dataset.year = year;
+          input.placeholder = '実額';
+          const ov = getValuationOverride(row.invId, year);
+          input.value = ov !== null ? formatInputYen(ov) : '';
+          input.title = '【評価額とは】証券会社のアプリ等に表示されている、今の本当の評価額をそのまま入れる欄です。\n'
+            + '・ここに数字を入れると、その年の「残高(自動計算)」はこの額にそのまま置き換わります。\n'
+            + '・定期預金からNISAに移した、相場が上下した、など理由は問いません。とにかく「今いくらか」を入れてください。\n'
+            + '・手元現金からは引かれません(財布から出したお金ではなく、すでにある資産の置き場所・価値が変わっただけのため)。\n'
+            + '・このセルは「年」単位の入力です。何月の時点かは分からないため、システムは「年末時点の額」として扱います(年の途中の値として年率で増やしたりはしません)。\n'
+            + '・何月の時点かまで分けて入れたい場合は、月次プランナーの「月末評価額」を使ってください。そちらは入れた月から年末まで、年率・積立額で自動的に伸ばして計算します。\n'
+            + '・空欄に戻すと、この上書きは解除されて自動計算(初期保有額・積立額・年率からの計算)に戻ります。';
+          attachMoneyInputFormat(input);
+          input.addEventListener('input', onValuationInput);
+          td.appendChild(input);
+        }
       } else if (row.type === 'bankbalance') {
         // 残高: 開始年は今ある額を手入力。2年目以降は前年残高＋年間貯金額で自動計算。
         if (year === years[0]) {
@@ -3147,8 +3194,11 @@ function generateMonthlyTable() {
         const id = `inv_${row.invId}_value`;
         if (data.monthlyCells[id]) delete data.monthlyCells[id][year];
         saveData();
+        // 年次タイムラインの「評価額」セルは、月別の有無で入力欄/参考表示が切り替わるため、
+        // generateTableで再描画する(内部でrecalcAllも呼ばれ、月次が使うyearAssetCacheも最新化される)。
+        // その後にgenerateMonthlyTableを呼ぶことで、月次側も最新のキャッシュで再計算される。
+        generateTable();
         generateMonthlyTable();
-        recalcAll();
       });
       labelTd.appendChild(resetBtn);
       tr.appendChild(labelTd);
@@ -3158,15 +3208,26 @@ function generateMonthlyTable() {
       baseInput.className = 'cell-input base-input';
       baseInput.type = 'text';
       baseInput.dataset.invValueBase = row.invId;
-      baseInput.placeholder = '今年の評価額';
-      {
-        const yv = data.cells[`inv_${row.invId}_value`] && data.cells[`inv_${row.invId}_value`][year];
+      const monthlyValueId = `inv_${row.invId}_value`;
+      const baseLocked = hasMonthlyOverrides(monthlyValueId, year);
+      if (baseLocked) {
+        // 月別に1つでも月末評価額が入っていると、年末まで自動的に伸ばす計算が優先されるため、
+        // ここを編集しても反映されない。混乱を防ぐため編集不可にし、理由を説明する。
+        baseInput.disabled = true;
+        baseInput.placeholder = '月別優先中';
+        baseInput.value = '';
+        baseInput.title = '【この年は月別の「月末評価額」が優先されています】\n'
+          + 'すでに月別の欄に実際の評価額を入力済みのため、ここは編集できません(入力しても反映されません)。\n'
+          + '基準額を変更したい場合は、まず下の「↺」ボタンでこの年の月別評価額をすべて消してから入力してください。';
+      } else {
+        baseInput.placeholder = '今年の評価額';
+        const yv = data.cells[monthlyValueId] && data.cells[monthlyValueId][year];
         baseInput.value = (yv !== undefined && yv !== null && yv !== '') ? formatInputYen(yv) : '';
+        baseInput.title = '【基準額(今年の評価額)とは】年次タイムラインの「評価額」と同じ値です(どちらかに入れればもう片方にも反映されます)。\n'
+          + '・何月の時点かまでは分からない「今年の評価額」を入れる欄です。入れると、月別に何も入力していない月は全部この額のまま(一定)で表示されます。\n'
+          + '・「いつ確認したか分からないので、これ以上は増やさない」という安全側の扱いです。年率や積立で増やしたい場合は、下の月別の欄に実際の月末評価額を入れてください(その月から年末までは自動的に増やして計算します)。\n'
+          + '・空欄に戻すと、初期保有額・積立額・年率からの自動計算に戻ります。';
       }
-      baseInput.title = '【基準額(今年の評価額)とは】年次タイムラインの「評価額」と同じ値です(どちらかに入れればもう片方にも反映されます)。\n'
-        + '・何月の時点かまでは分からない「今年の評価額」を入れる欄です。入れると、月別に何も入力していない月は全部この額のまま(一定)で表示されます。\n'
-        + '・「いつ確認したか分からないので、これ以上は増やさない」という安全側の扱いです。年率や積立で増やしたい場合は、下の月別の欄に実際の月末評価額を入れてください(その月から年末までは自動的に増やして計算します)。\n'
-        + '・空欄に戻すと、初期保有額・積立額・年率からの自動計算に戻ります。';
       attachMoneyInputFormat(baseInput);
       baseInput.addEventListener('input', onBaseValuationInput);
       baseTd.appendChild(baseInput);
@@ -3535,7 +3596,7 @@ function recalcAll() {
       if (!td) return;
       if (m.birth == null) { td.textContent = '-'; return; }
       const age = year - m.birth;
-      const grade = m.type === 'child' ? schoolGrade(age) : '';
+      const grade = m.type === 'child' ? schoolGrade(academicAge(year, m.birth, m.birthMonth)) : '';
       td.innerHTML = grade ? `${age}<span class="grade">${grade}</span>` : String(age);
     });
   });
