@@ -1243,7 +1243,7 @@ function buildInvestmentRows() {
     rows.push({ id: `inv_${inv.id}_initbal`, label: '初期保有額', type: 'initbal', invId: inv.id });
     rows.push({ id: `inv_${inv.id}_contrib`, label: '積立額', type: 'editable', default: 0, forwardFill: 'full', invId: inv.id });
     rows.push({ id: `inv_${inv.id}_rate`, label: '年率(%)', type: 'editable', default: inv.rate, forwardFill: 'full', invId: inv.id, isRate: true });
-    rows.push({ id: `inv_${inv.id}_value`, label: '評価額', type: 'valuation', invId: inv.id });
+    rows.push({ id: `inv_${inv.id}_value`, label: '年初評価額', type: 'valuation', invId: inv.id });
     rows.push({ id: `inv_${inv.id}_balance`, label: '残高(自動計算)', type: 'computed', invId: inv.id });
   });
   return rows;
@@ -2670,10 +2670,10 @@ function generateTable() {
         td.dataset.year = year;
         if (row.invId && row.id.endsWith('_balance')) {
           td.title = '【残高(自動計算)とは】初期保有額・積立額・年率から計算した残高です。\n'
-            + '「評価額」にその年の実額を入れている場合は、そちらの額がそのまま使われます(自動計算は使われません)。\n'
-            + '※この自動計算は、年に1回まとめて積立額を足して計算しています。月次プランナーは毎月の積立を毎月複利で計算しているため、'
-            + '利率・積立額が大きい場合、月次の12月の見込み額とこの残高がごくわずかに(数百円〜数千円程度)ずれることがあります。'
-            + '実害が出るほどの差ではありませんが、気になる場合は「評価額」に実際の額を入れれば、その額が優先されズレは消えます。';
+            + '「年初評価額」にその年の実額を入れている場合は、その額を年初(1月)時点として、年率・積立額で年末まで伸ばした額になります。\n'
+            + '※「年初評価額」が空欄の年は、年に1回まとめて積立額を足す簡易計算をしています。月次プランナーは毎月の積立を毎月複利で計算しているため、'
+            + '利率・積立額が大きい場合、月次の12月の見込み額とこの残高がごくわずかにずれることがあります。'
+            + '実害が出るほどの差ではありませんが、気になる場合は「年初評価額」に実際の額を入れれば、月次と同じ計算方法になりズレは消えます。';
         }
       } else if (row.type === 'eventrow') {
         // イベントは該当年(ev.year)の列に「イベント名(上段)＋金額(下段)」の2段で表示。他の年は「·」。
@@ -2746,7 +2746,7 @@ function generateTable() {
           input.placeholder = '実額';
           const ov = getValuationOverride(row.invId, year);
           input.value = ov !== null ? formatInputYen(ov) : '';
-          input.title = '【評価額とは】証券会社のアプリ等に表示されている、今の本当の評価額をそのまま入れる欄です。\n'
+          input.title = '【年初評価額とは】証券会社のアプリ等に表示されている、今の本当の評価額をそのまま入れる欄です。\n'
             + '・このセルは「年初(1月)時点でこれくらい」という額として扱われ、そこから年率・積立額で自動的に増やして、その年の「残高(自動計算)」を計算します。\n'
             + '・定期預金からNISAに移した、相場が上下した、など理由は問いません。とにかく「だいたいこれくらい」を入れてください。\n'
             + '・手元現金からは引かれません(財布から出したお金ではなく、すでにある資産の置き場所・価値が変わっただけのため)。\n'
@@ -3196,10 +3196,10 @@ function generateMonthlyTable() {
           + 'すでに月別の欄に実際の評価額を入力済みのため、ここは編集できません(入力しても反映されません)。\n'
           + '基準額を変更したい場合は、まず下の「↺」ボタンでこの年の月別評価額をすべて消してから入力してください。';
       } else {
-        baseInput.placeholder = '今年の評価額';
+        baseInput.placeholder = '年初評価額';
         const yv = data.cells[monthlyValueId] && data.cells[monthlyValueId][year];
         baseInput.value = (yv !== undefined && yv !== null && yv !== '') ? formatInputYen(yv) : '';
-        baseInput.title = '【基準額(今年の評価額)とは】年次タイムラインの「評価額」と同じ値です(どちらかに入れればもう片方にも反映されます)。\n'
+        baseInput.title = '【基準額(年初評価額)とは】年次タイムラインの「年初評価額」と同じ値です(どちらかに入れればもう片方にも反映されます)。\n'
           + '・「年初(1月)時点でこれくらい」という額を入れる欄です。入れると、そこから年率・積立額で自動的に増やして、月別に何も入力していない月の見込み額を表示します。\n'
           + '・実際にその月の本当の額が分かったら、下の月別の欄にその月の月末評価額を入れてください。その月の額が優先され、その月から先はそこからまた増やして計算します。\n'
           + '・空欄に戻すと、初期保有額・積立額・年率からの自動計算に戻ります。';
