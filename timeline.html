@@ -2902,6 +2902,7 @@ function onMonthlyValuationInput(e) {
   const month = parseInt(e.target.dataset.month);
   const year = data.monthlySelectedYear;
   const id = `inv_${invId}_value`;
+  const hadOverrides = hasMonthlyOverrides(id, year);
   const raw = e.target.value.trim();
   if (raw === '') {
     if (data.monthlyCells[id] && data.monthlyCells[id][year]) delete data.monthlyCells[id][year][month];
@@ -2909,7 +2910,15 @@ function onMonthlyValuationInput(e) {
     setMonthlyOverride(id, year, month, parseYenInput(e.target.value));
   }
   saveData();
-  recalcAll(); // 末尾でrecalcMonthlyTableも走り、月次の総資産(実額)も更新される
+  // 「月別の評価額が1つもある/ない」が入力前後で変わった場合は、年次タイムラインの評価額欄や
+  // 月次の基準額欄の編集可否(ロック表示)が切り替わるタイミングなので、構造ごと再描画する。
+  // 変わらない場合(他の月にまだ入力が残っている等)は、入力中のフォーカスを保つため再描画しない。
+  if (hasMonthlyOverrides(id, year) !== hadOverrides) {
+    generateTable();
+    generateMonthlyTable();
+  } else {
+    recalcAll(); // 末尾でrecalcMonthlyTableも走り、月次の総資産(実額)も更新される
+  }
 }
 
 // 月次プランナーの「評価額(実額)」基準額(年初の額)の入力。年次タイムラインの評価額(実額)と同じ値(年単位)を保存。
