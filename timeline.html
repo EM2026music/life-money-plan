@@ -1253,8 +1253,8 @@ function buildInvestmentRows() {
     rows.push({ id: `inv_${inv.id}_initbal`, label: '初期保有額', type: 'initbal', invId: inv.id });
     rows.push({ id: `inv_${inv.id}_contrib`, label: '積立額', type: 'editable', default: 0, forwardFill: 'full', invId: inv.id });
     rows.push({ id: `inv_${inv.id}_rate`, label: '年率(%)', type: 'editable', default: inv.rate, forwardFill: 'full', invId: inv.id, isRate: true });
-    rows.push({ id: `inv_${inv.id}_balance`, label: '残高', type: 'computed', invId: inv.id });
-    rows.push({ id: `inv_${inv.id}_value`, label: '評価額(実額)', type: 'valuation', invId: inv.id });
+    rows.push({ id: `inv_${inv.id}_value`, label: '評価額', type: 'valuation', invId: inv.id });
+    rows.push({ id: `inv_${inv.id}_balance`, label: '残高(自動計算)', type: 'computed', invId: inv.id });
   });
   return rows;
 }
@@ -1364,11 +1364,18 @@ function setCellValue(rowId, year, value) {
 // その年の月別セル(monthlyCells)のうち、入力された一番新しい月の値を返す(無ければnull)。
 // = 月末の評価額を毎月入れたとき、その年の"今(最新)"の額になる。
 function latestMonthlyValue(rowId, year) {
+  const r = latestMonthlyValueWithMonth(rowId, year);
+  return r ? r.value : null;
+}
+
+// latestMonthlyValueと同じだが、何月の値かも一緒に返す({value, month})。無ければnull。
+// 年次タイムライン側で「その月から年末までは自動で伸ばす」計算をするために月が必要。
+function latestMonthlyValueWithMonth(rowId, year) {
   const mc = data.monthlyCells[rowId] && data.monthlyCells[rowId][year];
   if (mc) {
     for (let m = 12; m >= 1; m--) {
       const v = mc[m];
-      if (v !== undefined && v !== null && v !== '') return v;
+      if (v !== undefined && v !== null && v !== '') return { value: v, month: m };
     }
   }
   return null;
@@ -1383,6 +1390,17 @@ function getValuationOverride(invId, year) {
   if (latest !== null) return latest;
   const v = data.cells[id] && data.cells[id][year];
   return (v !== undefined && v !== null && v !== '') ? v : null;
+}
+
+// getValuationOverrideと同じ値を返しつつ、月別入力が「何月の値か」も一緒に返す({value, month})。
+// month=nullは「年の評価額(実額)セル」由来＝何月か分からない＝年末時点として扱う、という意味。
+// 月が分かっている場合は、その月から年末までを年率・積立で自動的に伸ばして年末残高を計算するために使う。
+function getValuationOverrideWithMonth(invId, year) {
+  const id = `inv_${invId}_value`;
+  const m = latestMonthlyValueWithMonth(id, year);
+  if (m !== null) return m;
+  const v = data.cells[id] && data.cells[id][year];
+  return (v !== undefined && v !== null && v !== '') ? { value: v, month: null } : null;
 }
 
 // 銀行預金の「評価額(実額)」: 取り崩しなどで残高を実額に上書きしたいとき用。
@@ -2673,6 +2691,10 @@ function generateTable() {
         td.className = 'computed-cell';
         td.dataset.rowId = row.id;
         td.dataset.year = year;
+        if (row.invId && row.id.endsWith('_balance')) {
+          td.title = '【残高(自動計算)とは】初期保有額・積立額・年率から計算した残高です。\n'
+            + '「評価額」にその年の実額を入れている場合は、そちらの額がそのまま使われます(自動計算は使われません)。';
+        }
       } else if (row.type === 'eventrow') {
         // イベントは該当年(ev.year)の列に「イベント名(上段)＋金額(下段)」の2段で表示。他の年は「·」。
         const ev = data.lifeEvents.find(e => e.id === row.eventId);
@@ -2730,7 +2752,13 @@ function generateTable() {
         input.placeholder = '実額';
         const ov = getValuationOverride(row.invId, year);
         input.value = ov !== null ? formatInputYen(ov) : '';
-        input.title = 'その時点の実際の評価額。入れるとその年の残高をこの額に上書きします（定期→NISA等の移し替えや相場込みの“今いくら”を反映）。空欄なら自動計算。';
+        input.title = '【評価額とは】証券会社のアプリ等に表示されている、今の本当の評価額をそのまま入れる欄です。\n'
+          + '・ここに数字を入れると、その年の「残高(自動計算)」はこの額にそのまま置き換わります。\n'
+          + '・定期預金からNISAに移した、相場が上下した、など理由は問いません。とにかく「今いくらか」を入れてください。\n'
+          + '・手元現金からは引かれません(財布から出したお金ではなく、すでにある資産の置き場所・価値が変わっただけのため)。\n'
+          + '・このセルは「年」単位の入力です。何月の時点かは分からないため、システムは「年末時点の額」として扱います(年の途中の値として年率で増やしたりはしません)。\n'
+          + '・何月の時点かまで分けて入れたい場合は、月次プランナーの「月末評価額」を使ってください。そちらは入れた月から年末まで、年率・積立額で自動的に伸ばして計算します。\n'
+          + '・空欄に戻すと、この上書きは解除されて自動計算(初期保有額・積立額・年率からの計算)に戻ります。';
         attachMoneyInputFormat(input);
         input.addEventListener('input', onValuationInput);
         td.appendChild(input);
@@ -3069,7 +3097,7 @@ function generateMonthlyTable() {
   let pendingSection = null;
   ROWS.forEach(row => {
     if (row.section) { pendingSection = row; return; }
-    const isMonthly = (row.type === 'editable' && row.forwardFill !== undefined && !row.isRate) || (row.id && row.id.startsWith('catgrp_')) || row.type === 'invhead' || row.type === 'bankhead' || row.type === 'valuation';
+    const isMonthly = (row.type === 'editable' && row.forwardFill !== undefined && !row.isRate) || (row.id && row.id.startsWith('catgrp_')) || row.type === 'invhead' || row.type === 'bankhead' || row.type === 'valuation' || row.isRate;
     if (!isMonthly) return;
     if (pendingSection) {
       const name = pendingSection.section.replace(/（.*?）/, '');
@@ -3117,10 +3145,10 @@ function generateMonthlyTable() {
       // 入れた月のうち一番新しい月が"今"として年次・TOP・総資産に反映される。
       const labelTd = document.createElement('td');
       labelTd.className = 'row-label inv-sub';
-      labelTd.appendChild(document.createTextNode(row.label));
+      labelTd.appendChild(document.createTextNode('月末評価額'));
       const resetBtn = document.createElement('button');
       resetBtn.className = 'reset-btn';
-      resetBtn.title = 'この年の月別評価額をすべて消す';
+      resetBtn.title = 'この年の月末評価額をすべて消す';
       resetBtn.textContent = '↺';
       resetBtn.addEventListener('click', () => {
         const id = `inv_${row.invId}_value`;
@@ -3137,12 +3165,15 @@ function generateMonthlyTable() {
       baseInput.className = 'cell-input base-input';
       baseInput.type = 'text';
       baseInput.dataset.invValueBase = row.invId;
-      baseInput.placeholder = '年初の額';
+      baseInput.placeholder = '今年の評価額';
       {
         const yv = data.cells[`inv_${row.invId}_value`] && data.cells[`inv_${row.invId}_value`][year];
         baseInput.value = (yv !== undefined && yv !== null && yv !== '') ? formatInputYen(yv) : '';
       }
-      baseInput.title = 'この年の出発点となる評価額（年次タイムラインの評価額(実額)と同じ値）。月別に入力が無い月はここからの自動計算(積立＋利率)で表示されます。';
+      baseInput.title = '【基準額(今年の評価額)とは】年次タイムラインの「評価額」と同じ値です(どちらかに入れればもう片方にも反映されます)。\n'
+        + '・何月の時点かまでは分からない「今年の評価額」を入れる欄です。入れると、月別に何も入力していない月は全部この額のまま(一定)で表示されます。\n'
+        + '・「いつ確認したか分からないので、これ以上は増やさない」という安全側の扱いです。年率や積立で増やしたい場合は、下の月別の欄に実際の月末評価額を入れてください(その月から年末までは自動的に増やして計算します)。\n'
+        + '・空欄に戻すと、初期保有額・積立額・年率からの自動計算に戻ります。';
       attachMoneyInputFormat(baseInput);
       baseInput.addEventListener('input', onBaseValuationInput);
       baseTd.appendChild(baseInput);
@@ -3158,10 +3189,38 @@ function generateMonthlyTable() {
         const mv = getMonthlyOverride(`inv_${row.invId}_value`, year, m);
         input.value = (mv !== undefined && mv !== null && mv !== '') ? formatInputYen(mv) : '';
         input.classList.toggle('inherited', mv === undefined || mv === null || mv === '');
-        input.title = 'その月末の実際の評価額。入れた月のうち一番新しい月が"今"として総資産・TOPに反映されます。空欄はここに自動計算値を薄く表示します。';
+        input.title = '【月末評価額とは】証券会社のアプリ等で確認した、その月末時点の本当の評価額をそのまま入れてください。\n'
+          + '・入れた月のうち一番新しい(下の月)月が"今いくら"として総資産・TOPページに反映されます。\n'
+          + '・薄い文字の月は、まだ実際の額を入れていない月です。直近で入れた実額(または基準額)を元に、年率・積立額で自動計算した見込み額を表示しています(参考値)。\n'
+          + '・空欄に戻すと、その月の実額入力は消えて自動計算に戻ります。';
         attachMoneyInputFormat(input);
         input.addEventListener('input', onMonthlyValuationInput);
         td.appendChild(input);
+        tr.appendChild(td);
+      }
+      body.appendChild(tr);
+      return;
+    }
+
+    if (row.isRate) {
+      // 年率(%): 年に1回しか設定しない値なので、月次では参考表示のみ(編集不可)。
+      // 1ヶ月の利率ではなく「年利」だと分かるように、セルにも「/年」を付けて表示する。
+      const labelTd = document.createElement('td');
+      labelTd.className = 'row-label inv-sub';
+      labelTd.appendChild(document.createTextNode(row.label));
+      tr.appendChild(labelTd);
+      const rate = getYearlyEffectiveValue(row.id, year);
+      const rateText = rate + '%/年';
+      const baseTd = document.createElement('td');
+      baseTd.className = 'computed-cell base-cell';
+      baseTd.textContent = rateText;
+      baseTd.title = '年率（年利）。年次タイムラインの「年率(%)」で変更してください。';
+      tr.appendChild(baseTd);
+      for (let m = 1; m <= 12; m++) {
+        const td = document.createElement('td');
+        td.className = 'computed-cell';
+        td.textContent = rateText;
+        td.title = baseTd.title;
         tr.appendChild(td);
       }
       body.appendChild(tr);
@@ -3415,25 +3474,28 @@ function recalcMonthlyTable() {
   }
 
   // 「今いくら」用: 月ごとの 投資評価額合計 と 総資産(実額)。
-  // 評価額(実額)を入れた月はその額をそのまま採用(実際の値なので最優先)。
-  // 評価額を入れてない月は、直近の実額(または前年末/初期額)に、年率を月割りした複利＋積立額を積み上げて表示する
-  // (積立額を入れても画面が変わらないと分かりにくいため、評価額が無い間は積立・利率の効果を見せる)。
+  // ・月末評価額を入れた月は、その額をそのまま採用(実際の値なので最優先)。その月から先は
+  //   年率を月割りした複利＋積立額で伸ばして表示する(年次タイムラインの計算と一致させるため)。
+  // ・基準額(今年の評価額)だけ入れていて月別の入力が無い間は、何月の時点か分からないため
+  //   年率では伸ばさず、その額のまま一定で表示する(年次タイムラインが「年末時点」として扱うのと合わせる)。
+  // ・どちらも無い投資は、前年末の残高(無ければ初期保有額)から年率・積立で伸ばした自動計算の見込み額を表示する。
   const snap = yearAssetCache[year] || { cash: 0, deposit: 0, invBal: {} };
   const prevSnap = yearAssetCache[year - 1];
-  // 最初の入力月より前の月に使う基準額 = この年の「基準額(年初の額)」セルがあればそれ、
-  // 無ければ前年末の残高(無ければ初期保有額)。
   const runningVal = {};
   const monthlyRate = {};
+  const flatBasis = {}; // true の間は伸ばさず一定表示(基準額(今年の評価額)だけある状態)
   (data.investments || []).forEach(inv => {
     const baseCell = data.cells[`inv_${inv.id}_value`] && data.cells[`inv_${inv.id}_value`][year];
+    const hasBaseCell = (baseCell !== undefined && baseCell !== null && baseCell !== '');
     const fallback = (prevSnap && prevSnap.invBal[inv.id] !== undefined) ? prevSnap.invBal[inv.id] : (inv.initialBalance || 0);
-    runningVal[inv.id] = (baseCell !== undefined && baseCell !== null && baseCell !== '') ? baseCell : fallback;
+    runningVal[inv.id] = hasBaseCell ? baseCell : fallback;
+    flatBasis[inv.id] = hasBaseCell;
     const rate = getYearlyEffectiveValue(`inv_${inv.id}_rate`, year);
     monthlyRate[inv.id] = Math.pow(1 + rate / 100, 1 / 12) - 1; // 年率を「12回かけると年率になる」月利に変換
-    // 基準額(年初の額)セルの表示も最新化(年次タイムラインの評価額(実額)と同じ値)。
+    // 基準額(今年の評価額)セルの表示も最新化(年次タイムラインの評価額と同じ値)。
     const baseInput = document.querySelector(`#monthlyBody input[data-inv-value-base="${inv.id}"]`);
     if (baseInput && baseInput !== document.activeElement) {
-      baseInput.value = (baseCell !== undefined && baseCell !== null && baseCell !== '') ? formatInputYen(baseCell) : '';
+      baseInput.value = hasBaseCell ? formatInputYen(baseCell) : '';
     }
   });
   for (let m = 1; m <= 12; m++) {
@@ -3441,11 +3503,12 @@ function recalcMonthlyTable() {
     (data.investments || []).forEach(inv => {
       const mv = getMonthlyOverride(`inv_${inv.id}_value`, year, m);
       if (mv !== undefined && mv !== null && mv !== '') {
-        runningVal[inv.id] = mv; // 実額が入っていればそれを最新の基準にする
-      } else {
+        runningVal[inv.id] = mv; // 月末評価額が入っていればそれを最新の基準にする
+        flatBasis[inv.id] = false; // 何月の時点か分かったので、ここから先は伸ばしてよい
+      } else if (!flatBasis[inv.id]) {
         runningVal[inv.id] = runningVal[inv.id] * (1 + monthlyRate[inv.id])
           + getMonthlyEffectiveValue(`inv_${inv.id}_contrib`, year, m); // 月利の複利＋積立額分を積み上げる
-      }
+      } // flatBasisがtrueの間はrunningValをそのまま(一定)にする
       invSum += runningVal[inv.id];
       // その月のセル表示も最新化。実額が入っていればそのまま、無ければ自動計算値を薄く(inherited)表示。
       const monthInput = document.querySelector(`#monthlyBody input[data-inv-value-month="${inv.id}"][data-month="${m}"]`);
@@ -3513,14 +3576,27 @@ function recalcAll() {
     data.investments.forEach(inv => {
       const contribId = `inv_${inv.id}_contrib`;
       const balanceId = `inv_${inv.id}_balance`;
-      const override = getValuationOverride(inv.id, year);
+      const ov = getValuationOverrideWithMonth(inv.id, year);
       const contrib = getYearlyEffectiveValue(contribId, year);
       const rate = getYearlyEffectiveValue(`inv_${inv.id}_rate`, year);
       let newBalance;
-      if (override !== null) {
-        // 実額を入れた年はその額をそのまま採用。移し替え(定期→NISA等)や相場込みの
-        // "今いくら"なので、手元現金からは引かない(investTotalに加えない)。
-        newBalance = override;
+      if (ov !== null) {
+        if (ov.month !== null) {
+          // 何月の実額か分かっている(月次プランナーで入力): その月から年末までを、
+          // 月次プランナーと同じ計算(年率を月割りした複利＋積立額)で伸ばして年末の残高にする。
+          // (年次のこの年の残高と、月次の12月のセルが食い違わないようにするため)
+          const monthlyRate = Math.pow(1 + rate / 100, 1 / 12) - 1;
+          let v = ov.value;
+          for (let mm = ov.month + 1; mm <= 12; mm++) {
+            v = v * (1 + monthlyRate) + getMonthlyEffectiveValue(contribId, year, mm);
+          }
+          newBalance = v;
+        } else {
+          // 何月か分からない(年次タイムラインの「評価額(実額)」セルだけに入力): 年末時点の額として
+          // そのまま採用する(いつ確認した額か分からないので、これ以上は伸ばさない)。
+          newBalance = ov.value;
+        }
+        // 実額(移し替え・相場込みの"今いくら")なので、手元現金からは引かない(investTotalに加えない)。
       } else {
         newBalance = prevBalances[inv.id] * (1 + rate / 100) + contrib;
         investTotal += contrib; // この年に現金から投資へ移した分(現金から差し引く)
