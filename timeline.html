@@ -607,6 +607,9 @@
     width: 100%; padding: 0; font-family: inherit;
   }
   .event-cell2-name:focus { outline: 1px solid var(--accent); background: #fff; border-radius: 2px; }
+  /* 月次の年率セル: 年率(上段)＋月利(下段、参考)の2段 */
+  .rate-cell2 { display: flex; flex-direction: column; gap: 0; align-items: center; }
+  .rate-cell2-sub { font-size: 9px; color: var(--text-light); text-align: center; white-space: nowrap; }
   .section-add-btn {
     background: var(--accent);
     color: #fff;
@@ -3237,7 +3240,12 @@ function generateMonthlyTable() {
       labelTd.appendChild(document.createTextNode(row.label));
       tr.appendChild(labelTd);
       const rate = getYearlyEffectiveValue(row.id, year);
+      // 年率を「12回かけると年率になる」月利に変換して表示する(年率だけだと月ごとの伸び方が分かりにくいため)。
+      const yearMultiplier = 1 + rate / 100;
+      const monthlyRatePct = yearMultiplier > 0 ? (Math.pow(yearMultiplier, 1 / 12) - 1) * 100 : null;
+      const monthlyRateText = monthlyRatePct !== null ? (Math.round(monthlyRatePct * 10000) / 10000) + '%' : '(全損)';
       const rateTitle = '年率（年利）。ここを変更すると年次タイムラインの「年率(%)」も一緒に変わります(同じ値)。\n'
+        + `年率${rate}%を12回かけると年率になる月利に変換すると、月利${monthlyRateText}になります。月末評価額が無い月は、この月利で複利計算して伸ばしています。\n`
         + '※自動計算の見込み額は、月次(毎月複利)と年次(年1回まとめて計算)でごくわずかにずれることがあります。'
         + '実際の「月末評価額」を入れれば、その額が優先されズレは消えます。';
       const baseTd = document.createElement('td');
@@ -3251,11 +3259,25 @@ function generateMonthlyTable() {
       rateInput.style.textAlign = 'right';
       rateInput.addEventListener('change', onMonthlyRateBaseInput);
       baseTd.appendChild(rateInput);
+      const baseHint = document.createElement('div');
+      baseHint.className = 'rate-cell2-sub';
+      baseHint.textContent = '月利' + monthlyRateText;
+      baseHint.title = rateTitle;
+      baseTd.appendChild(baseHint);
       tr.appendChild(baseTd);
       for (let m = 1; m <= 12; m++) {
         const td = document.createElement('td');
         td.className = 'computed-cell';
-        td.textContent = rate + '%/年';
+        const wrap = document.createElement('div');
+        wrap.className = 'rate-cell2';
+        const line1 = document.createElement('div');
+        line1.textContent = rate + '%/年';
+        const line2 = document.createElement('div');
+        line2.className = 'rate-cell2-sub';
+        line2.textContent = '月' + monthlyRateText;
+        wrap.appendChild(line1);
+        wrap.appendChild(line2);
+        td.appendChild(wrap);
         td.title = rateTitle;
         tr.appendChild(td);
       }
