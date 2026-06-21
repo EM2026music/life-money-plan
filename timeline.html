@@ -2693,7 +2693,10 @@ function generateTable() {
         td.dataset.year = year;
         if (row.invId && row.id.endsWith('_balance')) {
           td.title = '【残高(自動計算)とは】初期保有額・積立額・年率から計算した残高です。\n'
-            + '「評価額」にその年の実額を入れている場合は、そちらの額がそのまま使われます(自動計算は使われません)。';
+            + '「評価額」にその年の実額を入れている場合は、そちらの額がそのまま使われます(自動計算は使われません)。\n'
+            + '※この自動計算は、年に1回まとめて積立額を足して計算しています。月次プランナーは毎月の積立を毎月複利で計算しているため、'
+            + '利率・積立額が大きい場合、月次の12月の見込み額とこの残高がごくわずかに(数百円〜数千円程度)ずれることがあります。'
+            + '実害が出るほどの差ではありませんが、気になる場合は「評価額」に実際の額を入れれば、その額が優先されズレは消えます。';
         }
       } else if (row.type === 'eventrow') {
         // イベントは該当年(ev.year)の列に「イベント名(上段)＋金額(下段)」の2段で表示。他の年は「·」。
@@ -3214,7 +3217,9 @@ function generateMonthlyTable() {
       const baseTd = document.createElement('td');
       baseTd.className = 'computed-cell base-cell';
       baseTd.textContent = rateText;
-      baseTd.title = '年率（年利）。年次タイムラインの「年率(%)」で変更してください。';
+      baseTd.title = '年率（年利）。年次タイムラインの「年率(%)」で変更してください。\n'
+        + '※自動計算の見込み額は、月次(毎月複利)と年次(年1回まとめて計算)でごくわずかにずれることがあります。'
+        + '実際の「月末評価額」を入れれば、その額が優先されズレは消えます。';
       tr.appendChild(baseTd);
       for (let m = 1; m <= 12; m++) {
         const td = document.createElement('td');
