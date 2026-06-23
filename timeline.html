@@ -1461,6 +1461,33 @@ function toYen(man) { return Math.round((man || 0) * 10000); }
 function fromYen(yen) { return (yen || 0) / 10000; }
 function formatYen(man) { return toYen(man).toLocaleString(); }
 
+// ユーザーが自由入力した文字列(分類名・イベント名など)をinnerHTMLに埋め込む前にエスケープする。
+// バックアップ読み込みなどで悪意ある名前(例: "><script>...)が混入してもタグとして解釈させないため。
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+// 分類を削除する前の確認ダイアログ。入力済みの予測値や家計簿の記録があれば、何が失われる/外れるかを明示する。
+// 家計簿側のトランザクションは分類「名」で紐づくため、分類を消すと該当記録が宙に浮き反映から外れる。
+function categoryDeleteConfirm(catId, catName) {
+  const rowId = `cat_${catId}`;
+  const hasTimelineData = (data.cells[rowId] && Object.keys(data.cells[rowId]).length > 0) ||
+                          (data.monthlyCells[rowId] && Object.keys(data.monthlyCells[rowId]).length > 0);
+  let kbCount = 0;
+  try {
+    const kb = JSON.parse(localStorage.getItem('lifeMoneyKakeiboV1') || 'null');
+    if (kb && kb.months) Object.values(kb.months).forEach(m => (m.transactions || []).forEach(t => {
+      if (t.category === catName && (t.amount || 0) !== 0) kbCount++;
+    }));
+  } catch (e) {}
+  let msg = `「${catName}」を削除します。よろしいですか?`;
+  const notes = [];
+  if (hasTimelineData) notes.push('この項目に入力した金額(予測)も削除されます');
+  if (kbCount > 0) notes.push(`家計簿の記録${kbCount}件はこの分類のまま残りますが、将来予測への反映から外れます`);
+  if (notes.length) msg += '\n\n(' + notes.join('。\n') + ')';
+  return confirm(msg);
+}
+
 // 入力欄(円)用: 表示はカンマ区切り、解析はカンマ等を除去して万円に戻す。
 function formatInputYen(man) { return toYen(man).toLocaleString(); }
 function parseYenInput(str) { return fromYen(parseFloat(String(str).replace(/[^0-9.\-]/g, '')) || 0); }
@@ -1572,7 +1599,7 @@ function renderCategorySettings() {
     if (group) {
       header.innerHTML = `
         ${toggleBtn}
-        <input type="text" class="inv-name group-name" value="${group.name}" data-group-id="${group.id}">
+        <input type="text" class="inv-name group-name" value="${escapeHtml(group.name)}" data-group-id="${group.id}">
         <button class="del-investment-btn del-group-btn" data-group-id="${group.id}">大項目を削除</button>
       `;
     } else {
@@ -1580,12 +1607,12 @@ function renderCategorySettings() {
     }
     groupDiv.appendChild(header);
 
-    const groupOptions = categoryStore.groups.map(g => `<option value="${g.id}">${g.name}</option>`).join('');
+    const groupOptions = categoryStore.groups.map(g => `<option value="${g.id}">${escapeHtml(g.name)}</option>`).join('');
     cats.forEach(cat => {
       const row = document.createElement('div');
       row.className = 'investment-row';
       row.innerHTML = `
-        <input type="text" class="inv-name cat-name" value="${cat.name}" data-cat-id="${cat.id}">
+        <input type="text" class="inv-name cat-name" value="${escapeHtml(cat.name)}" data-cat-id="${cat.id}">
         <label>大項目<select class="cat-group-select" data-cat-id="${cat.id}">
           <option value="">未分類</option>
           ${groupOptions}
@@ -1651,6 +1678,9 @@ function renderCategorySettings() {
   container.querySelectorAll('.del-cat-btn').forEach(el => {
     el.addEventListener('click', e => {
       const id = e.target.dataset.catId;
+      const cat = categoryStore.categories.find(c => c.id === id);
+      if (!cat) return;
+      if (!categoryDeleteConfirm(id, cat.name)) return;
       categoryStore.categories = categoryStore.categories.filter(c => c.id !== id);
       const rowId = `cat_${id}`;
       delete data.cells[rowId];
@@ -1720,7 +1750,7 @@ function renderLifeEventSettings() {
     const row = document.createElement('div');
     row.className = 'investment-row';
     row.innerHTML = `
-      <input type="text" class="inv-name ev-field" value="${ev.name}" data-id="${ev.id}" data-field="name">
+      <input type="text" class="inv-name ev-field" value="${escapeHtml(ev.name)}" data-id="${ev.id}" data-field="name">
       <label>年<input type="number" class="ev-field" value="${ev.year}" data-id="${ev.id}" data-field="year"></label>
       <label>金額(円)<input type="number" class="ev-field" value="${toYen(ev.amount)}" data-id="${ev.id}" data-field="amount"></label>
       <button class="del-investment-btn ev-del" data-id="${ev.id}">削除</button>
@@ -1776,7 +1806,7 @@ function renderInsuranceSettings() {
     const row = document.createElement('div');
     row.className = 'investment-row';
     row.innerHTML = `
-      <input type="text" class="inv-name ins-field" value="${ins.name}" data-id="${ins.id}" data-field="name">
+      <input type="text" class="inv-name ins-field" value="${escapeHtml(ins.name)}" data-id="${ins.id}" data-field="name">
       <button class="del-investment-btn ins-del" data-id="${ins.id}">削除</button>
     `;
     container.appendChild(row);
@@ -1833,7 +1863,7 @@ function renderIncomeSettings() {
     const row = document.createElement('div');
     row.className = 'investment-row';
     row.innerHTML = `
-      <input type="text" class="inv-name income-name" value="${it.name}" data-id="${it.id}">
+      <input type="text" class="inv-name income-name" value="${escapeHtml(it.name)}" data-id="${it.id}">
       <button class="del-investment-btn income-del" data-id="${it.id}">削除</button>
     `;
     container.appendChild(row);
@@ -1988,7 +2018,7 @@ function renameCategoryInline(catId, name) {
 function deleteCategoryInline(catId) {
   const cat = categoryStore.categories.find(c => c.id === catId);
   if (!cat) return;
-  if (!confirm(`「${cat.name}」を削除します。よろしいですか?\n(この項目に入力した金額も削除されます)`)) return;
+  if (!categoryDeleteConfirm(catId, cat.name)) return;
   categoryStore.categories = categoryStore.categories.filter(c => c.id !== catId);
   const rowId = `cat_${catId}`;
   delete data.cells[rowId];
@@ -2658,6 +2688,7 @@ function generateTable() {
           input.dataset.invValue = row.invId;
           input.dataset.year = year;
           input.placeholder = '実額';
+          input.setAttribute('aria-label', `${row.label} ${year}年 年初保有評価額`);
           const ov = getValuationOverride(row.invId, year);
           input.value = ov !== null ? formatInputYen(ov) : '';
           input.title = '【年初保有評価額とは】証券会社のアプリ等に表示されている、今の本当の評価額をそのまま入れる欄です。\n'
@@ -2680,6 +2711,7 @@ function generateTable() {
           input.dataset.bankInitbal = row.bankId;
           input.value = formatInputYen(bank ? bank.initialBalance : 0);
           input.title = '開始年に今この口座にある額。2年目以降は自動で計算されます。';
+          input.setAttribute('aria-label', `${row.label} ${year}年 開始時残高`);
           attachMoneyInputFormat(input);
           input.addEventListener('input', onBankInitbalInput);
           td.appendChild(input);
@@ -2694,6 +2726,7 @@ function generateTable() {
         input.type = 'text';
         input.dataset.rowId = row.id;
         input.dataset.year = year;
+        input.setAttribute('aria-label', `${row.label} ${year}年`);
         if (row.type === 'editable' && row.isRate) {
           input.value = getYearlyEffectiveValue(row.id, year);
           input.classList.toggle('inherited', isInherited(row.id, year));
@@ -3072,6 +3105,7 @@ function generateMonthlyTable() {
         input.dataset.invValueMonth = row.invId;
         input.dataset.month = m;
         input.placeholder = '実額';
+        input.setAttribute('aria-label', `${row.label} ${m}月 月末評価額`);
         const mv = getMonthlyOverride(`inv_${row.invId}_value`, year, m);
         input.value = (mv !== undefined && mv !== null && mv !== '') ? formatInputYen(mv) : '';
         input.classList.toggle('inherited', mv === undefined || mv === null || mv === '');
@@ -3194,6 +3228,7 @@ function generateMonthlyTable() {
     baseInput.className = 'cell-input base-input';
     baseInput.type = 'text';
     baseInput.dataset.rowId = row.id;
+    baseInput.setAttribute('aria-label', `${row.label} 基準額(月額)`);
     baseInput.value = formatInputYen(getCellValue(row.id, year) / 12);
     baseInput.classList.toggle('inherited', isInherited(row.id, year));
     attachMoneyInputFormat(baseInput);
@@ -3208,6 +3243,7 @@ function generateMonthlyTable() {
       input.type = 'text';
       input.dataset.rowId = row.id;
       input.dataset.month = m;
+      input.setAttribute('aria-label', `${row.label} ${m}月`);
       input.value = formatInputYen(getMonthlyEffectiveValue(row.id, year, m));
       input.classList.toggle('inherited', getMonthlyOverride(row.id, year, m) === undefined);
       attachMoneyInputFormat(input);
@@ -3725,7 +3761,13 @@ function updateExpenseDonut(year) {
   }
 }
 
-migrateData();
+// データ移行で想定外の形(壊れたlocalStorageや古いバックアップ)に当たって例外が出ても、
+// 画面全体が真っ白(全機能停止)になるのを防ぐ。移行できなくても、できる範囲で表示してバックアップ等を可能にする。
+try {
+  migrateData();
+} catch (e) {
+  console.error('データ移行中にエラーが発生しました:', e);
+}
 initSettingsInputs();
 renderIncomeSettings();
 renderCategorySettings();

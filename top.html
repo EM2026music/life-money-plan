@@ -517,6 +517,11 @@ let data = loadData();
 function toYen(man) { return Math.round((man || 0) * 10000); }
 function fromYen(yen) { return (yen || 0) / 10000; }
 
+// ユーザーが自由入力した文字列(家族の名前など)をinnerHTMLに埋め込む前にエスケープする。
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
 function initBasicInfo() {
   document.getElementById('startYear').value = data.startYear;
   document.getElementById('numYears').value = data.numYears;
@@ -537,9 +542,9 @@ function renderFamily() {
     const row = document.createElement('div');
     row.className = 'family-row';
     row.innerHTML = `
-      <input type="text" class="fam-name" value="${m.name}" data-id="${m.id}" placeholder="名前">
-      <label class="fam-field">生年<input type="number" class="fam-birth" value="${m.birth ?? ''}" data-id="${m.id}" placeholder="例:1988"></label>
-      ${m.type === 'child' ? `<label class="fam-field" title="学年の判定に使います(4/2〜翌4/1生まれが同学年という日本のルールに対応)。分からなければ空欄でOKです。">生まれ月<input type="number" min="1" max="12" class="fam-birth-month" value="${m.birthMonth ?? ''}" data-id="${m.id}" placeholder="任意"></label>` : ''}
+      <input type="text" class="fam-name" value="${escapeHtml(m.name)}" data-id="${m.id}" placeholder="名前">
+      <label class="fam-field">生年<input type="number" class="fam-birth" value="${escapeHtml(m.birth ?? '')}" data-id="${m.id}" placeholder="例:1988"></label>
+      ${m.type === 'child' ? `<label class="fam-field" title="学年の判定に使います(4/2〜翌4/1生まれが同学年という日本のルールに対応)。分からなければ空欄でOKです。">生まれ月<input type="number" min="1" max="12" class="fam-birth-month" value="${escapeHtml(m.birthMonth ?? '')}" data-id="${m.id}" placeholder="任意"></label>` : ''}
       <label class="fam-field"><input type="checkbox" class="fam-child" data-id="${m.id}" ${m.type === 'child' ? 'checked' : ''}>子ども</label>
       <button type="button" class="fam-del" data-id="${m.id}">削除</button>
     `;

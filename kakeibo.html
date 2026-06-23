@@ -778,6 +778,7 @@ function renderTransactions() {
     const dateTd = document.createElement('td');
     const dateInput = document.createElement('input');
     dateInput.type = 'date';
+    dateInput.setAttribute('aria-label', '日付');
     dateInput.value = t.date || todayStr();
     dateInput.addEventListener('input', () => { t.date = dateInput.value; saveData(); });
     dateTd.appendChild(dateInput);
@@ -786,6 +787,7 @@ function renderTransactions() {
     const whatTd = document.createElement('td');
     const whatInput = document.createElement('input');
     whatInput.type = 'text';
+    whatInput.setAttribute('aria-label', '買ったもの');
     whatInput.value = t.what || '';
     whatInput.addEventListener('input', () => { t.what = whatInput.value; saveData(); });
     whatTd.appendChild(whatInput);
@@ -795,6 +797,7 @@ function renderTransactions() {
     const amountInput = document.createElement('input');
     amountInput.type = 'number';
     amountInput.placeholder = '未定でも可';
+    amountInput.setAttribute('aria-label', '金額(円)');
     amountInput.value = (t.amount === null || t.amount === undefined) ? '' : t.amount;
     amountInput.addEventListener('input', () => {
       t.amount = amountInput.value === '' ? null : (parseFloat(amountInput.value) || 0);
@@ -807,6 +810,7 @@ function renderTransactions() {
     // 分類
     const catTd = document.createElement('td');
     const catSelect = document.createElement('select');
+    catSelect.setAttribute('aria-label', '分類');
     const categoryNames = categoryStore.categories.map(c => c.name);
     const catOptions = categoryNames.includes(t.category) || !t.category
       ? categoryNames
@@ -828,6 +832,7 @@ function renderTransactions() {
     const whoTd = document.createElement('td');
     const whoSelect = document.createElement('select');
     whoSelect.className = 'who-input';
+    whoSelect.setAttribute('aria-label', '誰が');
     const whoOpts = getWhoOptions();
     if (t.who && !whoOpts.includes(t.who)) whoOpts.push(t.who);
     whoOpts.forEach(opt => {
@@ -843,6 +848,7 @@ function renderTransactions() {
     const whereTd = document.createElement('td');
     const whereInput = document.createElement('input');
     whereInput.type = 'text';
+    whereInput.setAttribute('aria-label', '買った場所');
     whereInput.value = t.where || '';
     whereInput.addEventListener('input', () => { t.where = whereInput.value; saveData(); });
     whereTd.appendChild(whereInput);
@@ -881,6 +887,18 @@ function getMonthTotal(monthKey) {
   const variable = (m.transactions || []).reduce((s, t) => s + (t.amount || 0), 0);
   const fixed = Object.values(m.fixedCosts || {}).reduce((s, v) => s + (v || 0), 0);
   return variable + fixed;
+}
+
+// その分類名で金額を記録した支出が、全月でいくつあるかを数える(空行・金額未入力は除く)。
+// 分類を削除すると、これらの記録は分類名だけ残って宙に浮く(将来予測への反映から外れる)。
+function countTransactionsUsingCategory(name) {
+  let n = 0;
+  Object.values(data.months || {}).forEach(m => {
+    (m.transactions || []).forEach(t => {
+      if (t.category === name && (t.amount || 0) !== 0) n++;
+    });
+  });
+  return n;
 }
 
 function computeCategoryTotals(month, includeFixed) {
@@ -944,7 +962,7 @@ function updateSummary() {
     if (categoryTotals[c] === 0) return;
     const div = document.createElement('div');
     div.className = 'summary-item';
-    div.innerHTML = `<div class="label">${c}</div><div class="value">${Math.round(categoryTotals[c]).toLocaleString()} 円</div>`;
+    div.innerHTML = `<div class="label">${escapeHtml(c)}</div><div class="value">${Math.round(categoryTotals[c]).toLocaleString()} 円</div>`;
     grid.appendChild(div);
   });
 
@@ -1013,6 +1031,12 @@ function updateTrendChart() {
 // 初回はcategoryStoreの全大項目+未分類を入れて、デフォルト全て折りたたみにする。
 let collapsedCategoryGroups = null;
 
+// ユーザーが自由入力した文字列(分類名など)をinnerHTMLに埋め込む前にエスケープする。
+// バックアップ読み込みなどで悪意ある名前(例: "><script>...)が混入してもタグとして解釈させないため。
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
 function renderCategorySettings() {
   const container = document.getElementById('categoryGroupList');
   container.innerHTML = '';
@@ -1041,7 +1065,7 @@ function renderCategorySettings() {
     if (group) {
       header.innerHTML = `
         ${toggleBtn}
-        <input type="text" class="inv-name group-name" value="${group.name}" data-group-id="${group.id}">
+        <input type="text" class="inv-name group-name" value="${escapeHtml(group.name)}" data-group-id="${group.id}">
         <button class="del-investment-btn del-group-btn" data-group-id="${group.id}">大項目を削除</button>
       `;
     } else {
@@ -1049,12 +1073,12 @@ function renderCategorySettings() {
     }
     groupDiv.appendChild(header);
 
-    const groupOptions = categoryStore.groups.map(g => `<option value="${g.id}">${g.name}</option>`).join('');
+    const groupOptions = categoryStore.groups.map(g => `<option value="${g.id}">${escapeHtml(g.name)}</option>`).join('');
     cats.forEach(cat => {
       const row = document.createElement('div');
       row.className = 'investment-row';
       row.innerHTML = `
-        <input type="text" class="inv-name cat-name" value="${cat.name}" data-cat-id="${cat.id}">
+        <input type="text" class="inv-name cat-name" value="${escapeHtml(cat.name)}" data-cat-id="${cat.id}">
         <label>大項目<select class="cat-group-select" data-cat-id="${cat.id}">
           <option value="">未分類</option>
           ${groupOptions}
@@ -1116,6 +1140,9 @@ function renderCategorySettings() {
   container.querySelectorAll('.del-cat-btn').forEach(el => {
     el.addEventListener('click', e => {
       const id = e.target.dataset.catId;
+      const cat = categoryStore.categories.find(c => c.id === id);
+      const used = cat ? countTransactionsUsingCategory(cat.name) : 0;
+      if (used > 0 && !confirm(`分類「${cat.name}」は過去の記録${used}件で使われています。\n削除しても記録自体は残りますが、分類が宙に浮き、将来予測(人生キャッシュフロー)への反映から外れます。\n\n削除しますか?`)) return;
       categoryStore.categories = categoryStore.categories.filter(c => c.id !== id);
       saveCategoryStore(categoryStore);
       renderCategorySettings();
@@ -1255,7 +1282,16 @@ function confirmReflect(message, totals) {
   const lines = categoryStore.categories
     .map(c => `${c.name}: ${Math.round(totals[c.name] || 0).toLocaleString()}円`)
     .join('\n');
-  return confirm(`${message}\n0円の分類も上書きされます。\n\n${lines}`);
+  // 現存の分類にも固定費にも該当しない金額(=削除済み分類で記録した支出)は、反映先の行が無いので
+  // 黙って漏れる。ユーザーが気づけるよう、反映されない旨を確認ダイアログに明示する。
+  const known = new Set([...categoryStore.categories.map(c => c.name), ...FIXED_COST_ITEMS]);
+  const orphanLines = Object.keys(totals)
+    .filter(name => !known.has(name) && Math.round(totals[name] || 0) !== 0)
+    .map(name => `${name}: ${Math.round(totals[name]).toLocaleString()}円`);
+  const warn = orphanLines.length
+    ? `\n\n⚠ 次の分類は削除済みのため反映されません(家計簿の記録は残ります):\n${orphanLines.join('\n')}`
+    : '';
+  return confirm(`${message}\n0円の分類も上書きされます。\n\n${lines}${warn}`);
 }
 
 document.getElementById('reflectThisMonthBtn').addEventListener('click', () => {
